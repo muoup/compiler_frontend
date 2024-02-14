@@ -3,22 +3,23 @@
 #include <string>
 #include <vector>
 
+#include "../ast/analyze_util.h"
+
 namespace lex {
-    enum class naive_type {
+    enum class lex_type {
         NONE, // No token
         KEYWORD, // if, while, for, etc.
         IDENTIFIER, // Variable name, function name, etc.
         INT_LITERAL, FLOAT_LITERAL, STRING_LITERAL, CHAR_LITERAL,
         SYMBOL, // +, -, *, /, and punctuators like (, ), {, }, etc.
+        PUNCTUATOR
     };
 
-    struct naive_token {
-        naive_type type;
+    struct lex_token {
+        lex_type type;
         std::string_view span;
-    };
 
-    struct naive_lex_data {
-        std::vector<naive_token> tokens;
+        std::optional<ast::lex_ptr> closer;
     };
 
     const std::set<std::string_view> KEYWORD_SET = {
@@ -35,17 +36,21 @@ namespace lex {
         '=', '+', '-', '*', '/', '%',
         '!', '&', '|', '^', '~', '<', '>', '?', ':',
 
-        '{', '}', '(', ')', '[', ']', ';', ',', '.', '#'
+        ',', '.', '#', ';'
+    };
+
+    const std::set<char> PUNCTUATOR_SET = {
+        '{', '}', '(', ')', '[', ']'
     };
 
     const std::set<std::string_view> SPECIAL_SYMBOL = {
         "==", "!=", "<=", ">=",
         "&&", "||",
-        "++", "--",
+        "++", "--", "**",
         "+=", "-=", "*=", "/=", "%=",
         "&=", "|=", "^=",
         "<<", ">>"
     };
 
-    std::vector<naive_token> naive_lex(std::string_view code);
+    std::vector<lex_token> lex(std::string_view code);
 }

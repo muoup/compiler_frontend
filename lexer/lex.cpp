@@ -1,109 +1,100 @@
 #include "lex.h"
 
-#include <cctype>
-#include <ranges>
+#include <algorithm>
+#include <format>
+#include <stack>
+
+#include "derive_lex.h"
 
 using namespace lex;
 
-struct derived_lex {
-    naive_type type;
-    std::string_view span;
-    std::string_view::const_iterator end = span.cend() - 1;
-};
+std::optional<derived_lex> derive(const std::string_view span) {
+    const auto try_derive = [span](auto fn) {
+        return [span, fn] { return fn(span); };
+    };
 
-bool
-ident_end(const char c) {
-    return SYMBOL_SET.contains(c) || c == ' ' || c == '\n';
+    return derive_operator(span)
+        .or_else(try_derive(derive_punctuator))
+        .or_else(try_derive(derive_strlit))
+        .or_else(try_derive(derive_charlit));
 }
 
-std::optional<derived_lex>
-derive_numeric(const std::string_view span) {
-    naive_type type = naive_type::INT_LITERAL;
-    auto ptr = span.cbegin();
+void output_buffer(const auto buffer_start, const auto buffer_end, std::vector<lex_token>& tokens) {
+    if (buffer_start == buffer_end)
+        return;
 
-    for (; ptr != span.end(); ptr++) {
-        if (*ptr == '.' && type == naive_type::INT_LITERAL)
-            type = naive_type::FLOAT_LITERAL;
-        else if (!isdigit(*ptr))
-            return std::nullopt;
-        else if (*ptr == ' ' || *ptr == '\n')
-            break;
-    }
+    const auto shaved_start = std::find_if_not(buffer_start, buffer_end, iswspace);
+    const std::string_view shaved_buffer = { shaved_start, buffer_end };
 
-    return derived_lex { type, { span.cbegin(), ptr } };
-}
+    if (shaved_buffer.empty())
+        return;
 
-std::optional<derived_lex>
-derive_strlit(const std::string_view span) {
-    if (span.front() != '\"')
-        return std::nullopt;
-
-    const auto end = std::ranges::find(std::string_view{ span.cbegin() + 1, span.cend() }, '\"');
-
-    if (end == span.cend())
-        throw std::runtime_error("Unterminated string literal");
-
-    return derived_lex { naive_type::STRING_LITERAL, { span.cbegin() + 1, end - 1 }, end };
-}
-
-std::optional<derived_lex>
-derive_charlit(const std::string_view span) {
-    if (span.front() != '\'')
-        return std::nullopt;
-
-    if (span.at(2) != '\'')
-        throw std::runtime_error("Unclosed or invalid character literal");
-
-    return derived_lex { naive_type::CHAR_LITERAL, { span.cbegin() + 1 }, span.cbegin() + 2 };
-}
-
-std::optional<derived_lex>
-derived_nonlit(const std::string_view span) {
-    const auto end = std::ranges::find_if(span, ident_end);
-    const std::string_view ident { span.cbegin(), end };
-
-    if (KEYWORD_SET.contains(ident))
-        return derived_lex { naive_type::KEYWORD, ident };
-
-    return derived_lex { naive_type::IDENTIFIER, ident };
-}
-
-std::optional<derived_lex>
-derive_ident(const std::string_view span) {
-    if (span.empty())
-        return std::nullopt;
-
-    return derive_strlit(span)
-        .or_else([span] { return derive_charlit(span); })
-        .or_else([span] { return derive_numeric(span); })
-        .or_else([span] { return derived_nonlit(span); });
-}
-
-std::optional<derived_lex>
-derive_operator(const std::string_view span) {
-    if (SPECIAL_SYMBOL.contains({ span.cbegin(), span.cbegin() + 2 }))
-        return derived_lex { naive_type::SYMBOL, { span.cbegin(), span.cbegin() + 2 } };
+    if (isdigit(*buffer_start))
+        tokens.push_back(generate_numeric(shaved_buffer));
+    else if (KEYWORD_SET.contains(shaved_buffer))
+        tokens.emplace_back(lex_type::KEYWORD, shaved_buffer);
     else
-        return derived_lex { naive_type::SYMBOL, { span.cbegin(), span.cbegin() + 1 } };
+        tokens.emplace_back(lex_type::IDENTIFIER, shaved_buffer);
 }
 
-std::vector<naive_token> lex::naive_lex(const std::string_view code) {
-    std::vector<naive_token> tokens;
+void connect_punctuators(std::vector<lex_token>& tokens) {
+    std::stack<ast::lex_ptr> stack;
 
-    for (auto ptr = code.cbegin(); ptr != code.cend(); ++ptr) {
-        if (*ptr == ' ' || *ptr == '\n') continue;
+    const auto punc_assert = [](const ast::lex_ptr token, const std::string_view val) {
+        if (token->span != val)
+            throw std::runtime_error("Mismatched punctuators");
+    };
 
-        const auto derive = SYMBOL_SET.contains(*ptr) ?
-            derive_operator({ ptr, code.cend() }) :
-            derive_ident({ ptr, code.cend() });
-
-        if (derive == std::nullopt)
+    for (auto ptr = tokens.begin(); ptr != tokens.end(); ++ptr) {
+        if (ptr->type != lex_type::PUNCTUATOR)
             continue;
 
-        const auto [type, span, end] = derive.value();
-        tokens.push_back({ type, span });
-        ptr = end;
+        switch (ptr->span.front()) {
+            case '{':
+            case '(':
+            case '[':
+                stack.emplace(ptr);
+                continue;
+            case '}':
+                punc_assert(stack.top(), "{");
+                break;
+            case ')':
+                punc_assert(stack.top(), "(");
+                break;
+            case ']':
+                punc_assert(stack.top(), "[");
+                break;
+            default:
+                throw std::runtime_error(std::format("Invalid Punctuator: {}", ptr->span));
+        }
+
+        stack.top()->closer = ptr;
+        stack.pop();
     }
+}
+
+std::vector<lex_token> lex::lex(const std::string_view code) {
+    std::vector<lex_token> tokens;
+    auto buffer_start = code.begin();
+
+    for (auto ptr = code.cbegin(); ptr != code.cend(); ++ptr) {
+        if (*ptr == ' ' || *ptr == '\n') {
+            output_buffer(buffer_start, ptr, tokens);
+            buffer_start = ptr + 1;
+            continue;
+        }
+
+        if (const auto derived = derive({ ptr, code.cend() })) {
+            output_buffer(buffer_start, ptr, tokens);
+
+            tokens.emplace_back(derived->type, derived->span);
+            ptr = derived->end;
+            buffer_start = ptr + 1;
+        }
+    }
+
+    // TODO: If performance is bad, this can be done in the loop above to avoid the extra iteration
+    connect_punctuators(tokens);
 
     return tokens;
 }

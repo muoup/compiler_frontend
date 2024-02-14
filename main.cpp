@@ -1,8 +1,9 @@
-#include "lexer\lex.h"
+#include "ast/analyzer.h"
+#include "lexer/lex.h"
 
 int main() {
     const auto* code = R"(
-        int main() {
+        i8 main(i16 argc) {
             string s = "Hello, World!";
             int i = 0;
             i++;
@@ -10,7 +11,8 @@ int main() {
         }
     )";
 
-    auto tokens = lex::naive_lex(code);
+    const auto tokens = lex::lex(code);
+    auto ast = ast::parse(tokens);
 
     return 0;
 }
