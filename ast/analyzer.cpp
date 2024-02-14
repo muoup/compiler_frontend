@@ -11,8 +11,41 @@ const auto VARIABLE_IDENTIFIER = std::vector<lex::lex_type> {
     lex::lex_type::KEYWORD
 };
 
-ast_node parse_method(lex_cptr& ptr, const lex_cptr end) {
-    return {};
+ast_node parse_conditional(lex_cptr& ptr, const lex_cptr end) {
+
+}
+
+ast_node parse_assignment(lex_cptr& ptr, const lex_cptr end) {
+
+}
+
+// Two variations:
+// if ([condition]) { ... }
+// [ident] = [expr];
+ast_node parse_body(lex_cptr& ptr, const lex_cptr end) {
+    ast_node body { ast_node_type::FUNCTION_BODY };
+
+    while (ptr < end) {
+        if (ptr->span == "if") {
+            ++ptr;
+
+            const auto open = assert_token_val(ptr, "(");
+
+            body.add_child(parse_conditional(ptr, open->closer.value()));
+
+            assert_token_val(ptr, ")");
+
+            const auto body_open = assert_token_val(ptr, "{");
+
+            body.add_child(parse_body(ptr, body_open->closer.value()));
+
+            assert_token_val(ptr, "}");
+
+        } else if (ptr->type == lex::lex_type::IDENTIFIER
+                || ptr->type == lex::lex_type::KEYWORD) {
+
+        }
+    }
 }
 
 ast_node parse_method_params(lex_cptr& ptr, const lex_cptr end) {
@@ -60,7 +93,7 @@ ast_node ast::parse(const std::vector<lex::lex_token> &tokens) {
         const auto body = assert_token_val(ptr, "{");
 
         method.add_child(
-            parse_method(ptr, body->closer.value())
+            parse_body(ptr, body->closer.value())
         );
 
         assert_token_val(ptr, "}");

@@ -15,6 +15,9 @@ namespace ast {
         FUNCTION,
         PARAM_LIST,
         PARAM,
+        FUNCTION_BODY,
+
+        CONDITIONAL,
 
         TYPE,
         VARIABLE,
