@@ -18,6 +18,7 @@ namespace ast {
         FUNCTION_BODY,
 
         CONDITIONAL,
+        ASSIGNMENT,
 
         TYPE,
         VARIABLE,

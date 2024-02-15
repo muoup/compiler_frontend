@@ -23,7 +23,7 @@ lex_cptr ast::assert_token_type(lex_cptr& ptr, const lex::lex_type type) {
     return ptr++;
 }
 
-lex_cptr ast::assert_token_types(lex_cptr& ptr, const std::span<const lex::lex_type> types) {
+lex_cptr ast::assert_token_type(lex_cptr& ptr, const std::span<const lex::lex_type> types) {
     if (!std::ranges::contains(types, ptr->type))
         throw_unexpected(*ptr, "Wrong Type!");
 
@@ -37,11 +37,43 @@ lex_cptr ast::assert_token_val(lex_cptr& ptr, const std::string_view val) {
     return ptr++;
 }
 
-lex_cptr ast::assert_token_vals(lex_cptr& ptr, const std::span<const std::string_view> vals) {
+lex_cptr ast::assert_token_val(lex_cptr& ptr, const std::span<const std::string_view> vals) {
     if (!std::ranges::contains(vals, ptr->span))
         throw_unexpected(*ptr, "Wrong Value!");
 
     return ptr++;
+}
+
+bool ast::test_token_val(lex_cptr &ptr, const std::string_view val) {
+    if (ptr->span != val)
+        return false;
+
+    ++ptr;
+    return true;
+}
+
+bool ast::test_token_val(lex_cptr &ptr, const std::span<const std::string_view> vals) {
+    if (!std::ranges::contains(vals, ptr->span))
+        return false;
+
+    ++ptr;
+    return true;
+}
+
+bool ast::test_token_type(lex_cptr &ptr, const lex::lex_type type) {
+    if (ptr->type != type)
+        return false;
+
+    ++ptr;
+    return true;
+}
+
+bool ast::test_token_type(lex_cptr &ptr, const std::span<const lex::lex_type> types) {
+    if (!std::ranges::contains(types, ptr->type))
+        return false;
+
+    ++ptr;
+    return true;
 }
 
 std::optional<lex_ptr> ast::find_by_tok_val(const lex_ptr start, const lex_ptr end, const std::string_view val) {
