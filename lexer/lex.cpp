@@ -8,15 +8,15 @@
 
 using namespace lex;
 
-std::optional<derived_lex> derive(const std::string_view span) {
-    const auto try_derive = [span](auto fn) {
-        return [span, fn] { return fn(span); };
+std::optional<derived_lex> derive(const str_ptr start, const str_ptr end) {
+    const auto try_derive = [start, end](auto fn) {
+        return [start, end, fn] { return fn(start, end); };
     };
 
-    return derive_operator(span)
+    return derive_operator(start, end)
         .or_else(try_derive(derive_punctuator))
-        .or_else(try_derive(derive_strlit))
-        .or_else(try_derive(derive_charlit));
+        .or_else(try_derive(derive_charlit))
+        .or_else(try_derive(derive_strlit));
 }
 
 void output_buffer(const auto buffer_start, const auto buffer_end, std::vector<lex_token>& tokens) {
@@ -30,7 +30,7 @@ void output_buffer(const auto buffer_start, const auto buffer_end, std::vector<l
         return;
 
     if (isdigit(*buffer_start))
-        tokens.push_back(generate_numeric(shaved_buffer));
+        tokens.push_back(gen_numeric(buffer_start, buffer_end));
     else if (KEYWORD_SET.contains(shaved_buffer))
         tokens.emplace_back(lex_type::KEYWORD, shaved_buffer);
     else
@@ -38,9 +38,9 @@ void output_buffer(const auto buffer_start, const auto buffer_end, std::vector<l
 }
 
 void connect_punctuators(std::vector<lex_token>& tokens) {
-    std::stack<ast::lex_ptr> stack;
+    std::stack<lex_ptr> stack;
 
-    const auto punc_assert = [](const ast::lex_ptr token, const std::string_view val) {
+    const auto punc_assert = [](const lex_ptr token, const std::string_view val) {
         if (token->span != val)
             throw std::runtime_error("Mismatched punctuators");
     };
@@ -75,16 +75,17 @@ void connect_punctuators(std::vector<lex_token>& tokens) {
 
 std::vector<lex_token> lex::lex(const std::string_view code) {
     std::vector<lex_token> tokens;
-    auto buffer_start = code.begin();
+    auto buffer_start = code.cbegin();
+    const auto end = std::cend(code);
 
-    for (auto ptr = code.cbegin(); ptr != code.cend(); ++ptr) {
+    for (auto ptr = std::cbegin(code); ptr != end; ++ptr) {
         if (*ptr == ' ' || *ptr == '\n') {
             output_buffer(buffer_start, ptr, tokens);
             buffer_start = ptr + 1;
             continue;
         }
 
-        if (const auto derived = derive({ ptr, code.cend() })) {
+        if (const auto derived = derive(ptr, std::cend(code))) {
             output_buffer(buffer_start, ptr, tokens);
 
             tokens.emplace_back(derived->type, derived->span);

@@ -2,7 +2,6 @@
 
 #include <format>
 #include <stdexcept>
-#include <string_view>
 
 #include "lex.h"
 
@@ -13,61 +12,65 @@ ident_end(const char c) {
     return SYMBOL_SET.contains(c) || c == ' ' || c == '\n';
 }
 
-
 lex_token
-lex::generate_numeric(const std::string_view span) {
+lex::gen_numeric(const str_ptr start, const str_ptr end) {
     lex_type type = lex_type::INT_LITERAL;
-    auto ptr = span.cbegin();
+    auto ptr = start;
 
-    for (; ptr != span.end(); ptr++) {
+    for (; ptr != end; ++ptr) {
         if (*ptr == '.' && type == lex_type::INT_LITERAL)
             type = lex_type::FLOAT_LITERAL;
         else if (!isdigit(*ptr))
-            throw std::runtime_error(std::format("Invalid numerical literal: {}", span));
+            throw std::runtime_error(std::format("Invalid numerical literal: {}", std::string_view { ptr, end }));
     }
 
-    return { type, span };
+    return { type, { start, end } };
 }
 
 std::optional<derived_lex>
-lex::derive_strlit(const std::string_view span) {
-    if (span.front() != '\"')
+lex::derive_strlit(const str_ptr start, const str_ptr end) {
+    if (*start != '\"')
         return std::nullopt;
 
-    const auto end = std::ranges::find(std::string_view{ span.cbegin() + 1, span.cend() }, '\"');
+    auto find = start + 1;
 
-    if (end == span.cend())
+    while (find != end && *find != '\"' && find[-1] != '\\')
+        ++find;
+
+    if (find == end)
         throw std::runtime_error("Unterminated string literal");
 
-    return derived_lex { lex_type::STRING_LITERAL, { span.cbegin() + 1, end - 1 }, end };
+    return derived_lex { lex_type::STRING_LITERAL, start, find - 1, 1 };
 }
 
 std::optional<derived_lex>
-lex::derive_charlit(const std::string_view span) {
-    if (span.front() != '\'')
+lex::derive_charlit(const str_ptr start, const str_ptr end) {
+    if (*start != '\'')
         return std::nullopt;
 
-    if (span.at(2) != '\'')
+    const bool is_escaped = start[1] == '\\';
+    const auto expected_end = 2 + is_escaped;
+
+    if (end - start < 2 || start[expected_end] != '\'')
         throw std::runtime_error("Unclosed or invalid character literal");
 
-    return derived_lex { lex_type::CHAR_LITERAL, { span.cbegin() + 1 }, span.cbegin() + 2 };
+    return derived_lex { lex_type::CHAR_LITERAL, start + 1, start + expected_end - 1, 1 };
 }
 
 std::optional<derived_lex>
-lex::derive_operator(const std::string_view span) {
-    if (!SYMBOL_SET.contains(span.front()))
+lex::derive_operator(const str_ptr start, const str_ptr) {
+    if (!SYMBOL_SET.contains(*start))
         return std::nullopt;
 
-    if (SPECIAL_SYMBOL.contains({ span.cbegin(), span.cbegin() + 2 }))
-        return derived_lex { lex_type::SYMBOL, { span.cbegin(), span.cbegin() + 2 } };
-    else
-        return derived_lex { lex_type::SYMBOL, { span.cbegin(), span.cbegin() + 1 } };
+    const bool is_special = SPECIAL_SYMBOL.contains({ start, start + 2 });
+
+    return derived_lex { lex_type::SYMBOL, start, start + is_special };
 }
 
 std::optional<derived_lex>
-lex::derive_punctuator(const std::string_view span) {
-    if (!PUNCTUATOR_SET.contains(span.front()))
+lex::derive_punctuator(const str_ptr start, const str_ptr) {
+    if (!PUNCTUATOR_SET.contains(*start))
         return std::nullopt;
 
-    return derived_lex { lex_type::PUNCTUATOR, { span.cbegin(), span.cbegin() + 1 } };
+    return derived_lex { lex_type::PUNCTUATOR, start, start };
 }

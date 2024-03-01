@@ -1,11 +1,14 @@
 #pragma once
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
 
-#include "../ast/analyze_util.h"
-
 namespace lex {
+    struct lex_token;
+    using str_ptr = std::string_view::const_iterator;
+    using lex_ptr = std::vector<lex_token>::iterator;
+
     enum class lex_type {
         NONE, // No token
         KEYWORD, // if, while, for, etc.
@@ -19,7 +22,12 @@ namespace lex {
         lex_type type;
         std::string_view span;
 
-        std::optional<ast::lex_ptr> closer;
+        std::optional<lex_ptr> closer;
+    };
+
+    const std::set<lex_type> LITERAL_SET = {
+        lex_type::INT_LITERAL, lex_type::FLOAT_LITERAL,
+        lex_type::STRING_LITERAL, lex_type::CHAR_LITERAL
     };
 
     const std::set<std::string_view> KEYWORD_SET = {

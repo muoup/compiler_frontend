@@ -2,6 +2,8 @@
 #include <optional>
 #include <string_view>
 
+#include "lex.h"
+
 namespace lex {
     struct lex_token;
     enum class lex_type;
@@ -9,20 +11,17 @@ namespace lex {
     struct derived_lex {
         lex_type type;
         std::string_view span;
-        std::string_view::const_iterator end = span.cend() - 1;
+        str_ptr end;
+
+        derived_lex(const lex_type type, str_ptr start, str_ptr end, const ptrdiff_t skip_chars = 0)
+            : type(type), span(start, end + 1), end(end + skip_chars) { }
     };
 
-    struct maybe_derive {
-        std::optional<derived_lex> val;
+    std::optional<derived_lex> derive_strlit(str_ptr start, str_ptr end);
 
-        static maybe_derive create() {
-            return maybe_derive { std::nullopt };
-        }
-    };
+    std::optional<derived_lex> derive_charlit(str_ptr start, str_ptr end);
+    lex_token gen_numeric(str_ptr start, str_ptr end);
 
-    std::optional<derived_lex> derive_strlit(std::string_view span);
-    std::optional<derived_lex> derive_charlit(std::string_view span);
-    std::optional<derived_lex> derive_operator(std::string_view span);
-    std::optional<derived_lex> derive_punctuator(std::string_view span);
-    lex_token generate_numeric(std::string_view span);
+    std::optional<derived_lex> derive_operator(str_ptr start, str_ptr end);
+    std::optional<derived_lex> derive_punctuator(str_ptr start, str_ptr end);
 }
