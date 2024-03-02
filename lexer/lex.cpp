@@ -79,7 +79,7 @@ std::vector<lex_token> lex::lex(const std::string_view code) {
     const auto end = std::cend(code);
 
     for (auto ptr = std::cbegin(code); ptr != end; ++ptr) {
-        if (*ptr == ' ' || *ptr == '\n') {
+        if (*ptr == ' ' || *ptr == '\n' || *ptr == '\0') {
             output_buffer(buffer_start, ptr, tokens);
             buffer_start = ptr + 1;
             continue;
@@ -93,6 +93,8 @@ std::vector<lex_token> lex::lex(const std::string_view code) {
             buffer_start = ptr + 1;
         }
     }
+
+    output_buffer(buffer_start, end, tokens);
 
     // TODO: If performance is bad, this can be done in the loop above to avoid the extra iteration
     connect_punctuators(tokens);

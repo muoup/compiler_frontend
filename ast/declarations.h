@@ -1,6 +1,7 @@
 #pragma once
 #include <optional>
 #include <string_view>
+#include <variant>
 #include <vector>
 
 namespace lex {
@@ -15,7 +16,7 @@ namespace ast {
         FUNCTION,
         PARAM_LIST,
         PARAM,
-        FUNCTION_BODY,
+        CODE_BLOCK,
 
         CONDITIONAL,
         ASSIGNMENT,
@@ -35,12 +36,13 @@ namespace ast {
 
         std::vector<ast_node> children;
 
-        ast_node& add_child(ast_node&& child);
+        // ast_node& add_child(ast_node&& child);
+        ast_node& add_child(ast_node child);
         ast_node& add_child(ast_node_type type, std::string_view metadata = "", std::string_view data = "");
 
         template<class ... Args>
-        void add_children(ast_node&& child, Args&&... children);
-        void add_children(std::vector<ast_node>&& children);
+        void add_children(ast_node child, Args... children);
+        void add_children(std::vector<ast_node> children);
 
         ast_node with_data(std::string_view data);
         ast_node with_metadata(std::string_view metadata);

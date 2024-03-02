@@ -24,8 +24,8 @@ ast_node pm::parse_call_params(lex_cptr& ptr, const lex_cptr end) {
 }
 
 ast_node pm::parse_method(lex_cptr& ptr, const lex_cptr) {
-    const lex_cptr method_ret_type = assert_token(ptr, is_variable_identifier);
-    const lex_cptr method_name = assert_token_type(ptr, lex::lex_type::IDENTIFIER);
+    const auto method_ret_type = assert_token(ptr, is_variable_identifier);
+    const auto method_name = assert_token_type(ptr, lex::lex_type::IDENTIFIER);
 
     ast_node method = {
         ast_node_type::FUNCTION,
@@ -45,5 +45,12 @@ ast_node pm::parse_method(lex_cptr& ptr, const lex_cptr) {
 }
 
 ast_node pm::parse_body(lex_cptr &ptr, lex_cptr end) {
-    return {};
+    ast_node body {
+        ast_node_type::CODE_BLOCK,
+    };
+
+    while (ptr != end)
+        body.add_child(parse_statement(ptr, end));
+
+    return body;
 }

@@ -23,7 +23,7 @@ llvm_map_components_to_libnames(core)
 set(CMAKE_CXX_STANDARD 23)
 file(GLOB_RECURSE FILES "*.cpp" "*.h")
 list(FILTER FILES EXCLUDE REGEX "cmake-build.*")
-list(FILTER FILES EXCLUDE REGEX "llvm-gen/.*")
+#list(FILTER FILES EXCLUDE REGEX "llvm-gen/.*")
 
 add_executable(LLVMProj ${FILES})
 

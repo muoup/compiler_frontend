@@ -6,8 +6,13 @@
 
 using namespace ast;
 
-ast_node& ast_node::add_child(ast_node&& child) {
-    this->children.emplace_back(child);
+// ast_node& ast_node::add_child(ast_node&& child) {
+//     this->children.emplace_back(child);
+//     return children.back();
+// }
+
+ast_node& ast_node::add_child(ast_node child) {
+    this->children.emplace_back(std::move(child));
     return children.back();
 }
 
@@ -16,14 +21,14 @@ ast_node& ast_node::add_child(const ast_node_type type, const std::string_view m
 }
 
 template<typename... Args>
-void ast_node::add_children(ast_node&& child, Args&&... children) {
+void ast_node::add_children(ast_node child, Args... children) {
     add_child(std::move(child));
 
     if constexpr (sizeof...(children) > 0)
         add_children((std::move(children), ...));
 }
 
-void ast_node::add_children(std::vector<ast_node>&& children) {
+void ast_node::add_children(std::vector<ast_node> children) {
     for (auto&& child : children)
         this->add_child(std::move(child));
 }
