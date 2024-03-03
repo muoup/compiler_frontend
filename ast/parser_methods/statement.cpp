@@ -13,53 +13,23 @@
 using namespace ast;
 
 ast_node pm::parse_statement(lex_cptr &ptr, lex_cptr end) {
-    if (ptr->span.compare("if")) {
+    if (ptr->span == "if") {
         // return parse_conditional(ptr, end);
         return {};
-    } else {
-        return parse_expression(ptr, end);
     }
+
+    return parse_until(ptr, end, ";", parse_expression);
 }
 
 ast_node pm::parse_initialization(lex_cptr &ptr, lex_cptr end) {
-    return {};
-}
+    const auto metadata = ptr++->span;
+    const auto data = ptr++->span;
 
-ast_node& flush_operators(ast_node& curr_root, std::stack<lex_cptr> &ident_stack, std::stack<lex_cptr> &op_stack) {
-    while (!op_stack.empty()) {
-        const auto &op = curr_root.add_child(
-            ast_node_type::OPERATOR, op_stack.top()->span
-        );
-        op_stack.pop();
-
-        curr_root.add_child(
-            pm::parse_value(ident_stack.top())
-        );
-        ident_stack.pop();
-
-        curr_root = op;
-    }
-
-    return curr_root;
-}
-
-ast_node& add_operator(const lex_cptr ptr, ast_node& curr_root, std::stack<lex_cptr> &ident_stack, std::stack<lex_cptr> &op_stack) {
-    if (op_stack.empty() || pm::binop_prec.at(op_stack.top()->span) >= pm::binop_prec.at(ptr->span)) {
-        op_stack.push(ptr);
-        return curr_root;
-    }
-
-    auto &binop = curr_root.add_child(ast_node {
-        ast_node_type::OPERATOR,
-        ptr->span
-    });
-
-    auto& lbottom = flush_operators(curr_root, ident_stack, op_stack);
-
-    lbottom.add_child(pm::parse_value(ident_stack.top()));
-    ident_stack.pop();
-
-    return binop;
+    return ast_node {
+        ast_node_type::INITIALIZATION,
+        data,
+        metadata
+    };
 }
 
 ast_node combine_expr(const ast_node expr1, ast_node op, const ast_node expr2) {
@@ -76,7 +46,27 @@ ast_node pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
         ast_node_type::EXPRESSION
     };
 
-    const auto combine_back = [&expr_stack, &op_stack]() {
+    const auto gen_expr = [&ptr, end] {
+        auto expr = parse_value(ptr, end);
+
+        if (expr)
+            return expr.value();
+
+        ast_node op {
+            ast_node_type::UN_OP,
+            assert_token_type(ptr, lex::lex_type::SYMBOL)->span
+        };
+
+        expr = parse_value(ptr, end);
+
+        if (!expr)
+            throw std::runtime_error("Expected expression after operator.");
+
+        op.add_child(expr.value());
+        return op;
+    };
+
+    const auto combine_back = [&expr_stack, &op_stack] {
         auto top_expr = std::move(expr_stack.top());
         expr_stack.pop();
 
@@ -91,20 +81,18 @@ ast_node pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
         );
     };
 
-    expr_stack.emplace(parse_value(ptr));
+    expr_stack.emplace(gen_expr());
 
     while (ptr != end) {
         auto op = ast_node {
-            ast_node_type::OPERATOR,
-            ptr++->span
+            ast_node_type::BIN_OP,
+            assert_token_type(ptr, lex::lex_type::SYMBOL)->span
         };
-
-        auto expr = parse_value(ptr);
 
         while (!op_stack.empty() && !greater_prec(op.data, op_stack.top().data))
             combine_back();
 
-        expr_stack.emplace(expr);
+        expr_stack.emplace(gen_expr());
         op_stack.emplace(std::move(op));
     }
 
@@ -117,24 +105,37 @@ ast_node pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
     return expr_root;
 }
 
-ast_node pm::parse_value(lex_cptr &ptr) {
+std::optional<ast_node> pm::parse_value(lex_cptr &ptr, const lex_cptr end) {
+    if (ptr->type == lex::lex_type::KEYWORD
+        || ptr->type == lex::lex_type::IDENTIFIER && (ptr + 1)->type == lex::lex_type::IDENTIFIER)
+        return parse_initialization(ptr, end);
+
     if (ptr->type == lex::lex_type::IDENTIFIER) {
+        if ((ptr + 1)->span == "(") {
+            return ast_node {
+                ast_node_type::METHOD_CALL,
+                "",
+                "",
+                parse_split(++ptr, ptr->closer.value(), ",", parse_expression)
+            };
+        }
+
         return ast_node {
             ast_node_type::VARIABLE,
-            "",
-            ptr++->span
+            ptr++->span,
+            ""
         };
     } else if (lex::LITERAL_SET.contains(ptr->type)) {
         return ast_node {
             ast_node_type::LITERAL,
-            "",
-            ptr++->span
+            ptr++->span,
+            ""
         };
     } else if (ptr->span == "(") {
         return std::move(parse_between(ptr, parse_expression).children[0]);
     }
 
-    throw std::runtime_error("Invalid value");
+    return std::nullopt;
 }
 
 void pm::try_optimize(ast_node& node) {
@@ -149,8 +150,8 @@ void pm::try_optimize(ast_node& node) {
     const auto& child2 = node.children[1];
 
     if (child1.type == ast_node_type::LITERAL && child2.type == ast_node_type::LITERAL) {
-        const auto& data1 = child1.metadata;
-        const auto& data2 = child2.metadata;
+        const auto& data1 = child1.data;
+        const auto& data2 = child2.data;
 
         int num1, num2;
         std::from_chars(data1.data(), data1.data() + data1.size(), num1);

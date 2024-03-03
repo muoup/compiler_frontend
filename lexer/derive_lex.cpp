@@ -58,11 +58,11 @@ lex::derive_charlit(const str_ptr start, const str_ptr end) {
 }
 
 std::optional<derived_lex>
-lex::derive_operator(const str_ptr start, const str_ptr) {
+lex::derive_operator(const str_ptr start, const str_ptr end) {
     if (!SYMBOL_SET.contains(*start))
         return std::nullopt;
 
-    const bool is_special = SPECIAL_SYMBOL.contains({ start, start + 2 });
+    const bool is_special = start <= end - 2 && SPECIAL_SYMBOL.contains({ start, start + 2 });
 
     return derived_lex { lex_type::SYMBOL, start, start + is_special };
 }

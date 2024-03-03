@@ -10,7 +10,7 @@ namespace ast::pm {
     ast_node parse_initialization(lex_cptr& ptr, lex_cptr end);
     ast_node parse_expression(lex_cptr& ptr, lex_cptr end);
 
-    ast_node parse_value(lex_cptr &ptr);
+    std::optional<ast_node> parse_value(lex_cptr &ptr, const lex_cptr end);
 
     void try_optimize(ast_node& node);
 }

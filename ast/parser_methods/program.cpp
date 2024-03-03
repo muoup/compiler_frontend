@@ -24,13 +24,10 @@ ast_node pm::parse_call_params(lex_cptr& ptr, const lex_cptr end) {
 }
 
 ast_node pm::parse_method(lex_cptr& ptr, const lex_cptr) {
-    const auto method_ret_type = assert_token(ptr, is_variable_identifier);
-    const auto method_name = assert_token_type(ptr, lex::lex_type::IDENTIFIER);
-
     ast_node method = {
         ast_node_type::FUNCTION,
-        method_ret_type->span,
-        method_name->span
+        assert_token(ptr, is_variable_identifier)->span,
+        assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span
     };
 
     method.add_child(

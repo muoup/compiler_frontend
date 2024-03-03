@@ -15,25 +15,25 @@ void print_ast(const ast::ast_node& node, const int depth = 0) {
 }
 
 int main() {
-    // const auto* code = R"(
-    //     i8 main(i16 argc) {
-    //         string s = "Hello, World!";
-    //         char c = 'c';
-    //         char c2 = '\n';
-    //         i16 i = 0;
-    //     }
-    // )";
+    const auto* code = R"(
+        i8 main(i16 argc) {
+            string s = "Hello, World!";
+            char c = 'c';
+            char c2 = '\n';
+            i16 i = 0;
+        }
+    )";
 
-    // const auto tokens = lex::lex(code);
-    // auto ast = ast::parse(tokens);
+    const auto tokens = lex::lex(code);
+    auto ast = ast::parse(tokens);
 
     // llvm_gen::hello_world_example();
 
-    const auto* statement = "3 * (3 + 3)";
-
-    const auto stmt_toks = lex::lex(statement);
-    auto ptr = stmt_toks.cbegin();
-    auto ast = ast::pm::parse_expression(ptr, stmt_toks.cend());
+    // const auto* statement = "string s = \"Hello, World!\";";
+    //
+    // const auto stmt_toks = lex::lex(statement);
+    // auto ptr = stmt_toks.cbegin();
+    // auto ast = ast::pm::parse_statement(ptr, stmt_toks.cend());
 
     print_ast(ast);
 

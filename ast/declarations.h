@@ -18,6 +18,9 @@ namespace ast {
         PARAM,
         CODE_BLOCK,
 
+        IF,
+        WHILE,
+
         CONDITIONAL,
         ASSIGNMENT,
         EXPRESSION,
@@ -26,7 +29,10 @@ namespace ast {
         TYPE,
         VARIABLE,
         LITERAL,
-        OPERATOR
+        INITIALIZATION,
+
+        UN_OP,
+        BIN_OP
     };
 
     struct ast_node {

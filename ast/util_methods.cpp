@@ -8,14 +8,16 @@
 
 using namespace ast;
 
-ast_node ast::parse_until(lex_cptr& ptr, const lex_cptr end, std::string_view until, const parse_fn fn) {
-    const auto terminate = find_by_tok_val(ptr, end, until);
+ast_node ast::parse_until(lex_cptr& ptr, lex_cptr end, std::string_view until, const parse_fn fn, const bool assert_contains) {
+    const auto terminate = find_by_tok_val(ptr, end, until)
+        .or_else([assert_contains, end, &until] -> std::optional<lex_cptr> {
+            if (assert_contains)
+                throw std::runtime_error(std::format("Expected but never found: {}", until));
+            return end;
+        }).value();
 
-    if (!terminate)
-        throw std::runtime_error(std::format("Expected but never found: {}", until));
-
-    const auto ret_node = fn(ptr, terminate.value());
-    ptr = terminate.value() + 1;
+    const auto ret_node = fn(ptr, terminate);
+    ptr = terminate + 1;
 
     return ret_node;
 }
@@ -41,7 +43,7 @@ std::vector<ast_node> ast::parse_split(lex_cptr& ptr, const lex_cptr end, const 
 
     while (ptr < end) {
         split.push_back(
-            parse_until(ptr, end, delimiter, fn)
+            parse_until(ptr, end, delimiter, fn, false)
         );
     }
 
@@ -168,7 +170,7 @@ loop_fn ast::test_token_predicate(auto pred) {
 
 std::optional<lex_cptr> ast::find_by_tok_val(const lex_cptr start, const lex_cptr end, const std::string_view val) {
     auto find = std::find_if(start, end, [val](const lex::lex_token& token) {
-        return token.span.compare(val);
+        return token.span == val;
     });
 
     if (find == end)

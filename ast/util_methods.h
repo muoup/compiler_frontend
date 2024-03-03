@@ -32,7 +32,7 @@ namespace ast {
 
     std::optional<ast_node> gen_variable_identifier(lex_cptr& token);
 
-    ast_node parse_until(lex_cptr& ptr, lex_cptr end, std::string_view until, parse_fn fn);
+    ast_node parse_until(lex_cptr& ptr, lex_cptr end, std::string_view until, parse_fn fn, bool assert_contains = true);
     ast_node parse_between(lex_cptr& ptr, parse_fn fn);
     ast_node parse_between(lex_cptr& ptr, std::string_view exp_val, parse_fn fn);
 
