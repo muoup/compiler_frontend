@@ -82,10 +82,23 @@ std::vector<lex_token> lex::lex(const std::string_view code) {
         if (*ptr == ' ' || *ptr == '\n' || *ptr == '\0') {
             output_buffer(buffer_start, ptr, tokens);
             buffer_start = ptr + 1;
-            continue;
         }
 
-        if (const auto derived = derive(ptr, std::cend(code))) {
+        // Comments
+        else if (*ptr == '/' && *(ptr + 1) == '/') {
+            output_buffer(buffer_start, ptr, tokens);
+            buffer_start = std::find(ptr, end, '\n');
+            ptr = buffer_start;
+        }
+
+        else if (*ptr == '/' && *(ptr + 1) == '*') {
+            output_buffer(buffer_start, ptr, tokens);
+            while (ptr++ != end - 2 && (*ptr != '*' || *(ptr + 1) != '/')) {}
+            buffer_start = ptr + 2;
+            ptr += 2;
+        }
+
+        else if (const auto derived = derive(ptr, std::cend(code))) {
             output_buffer(buffer_start, ptr, tokens);
 
             tokens.emplace_back(derived->type, derived->span);

@@ -17,8 +17,12 @@ void print_ast(const ast::ast_node& node, const int depth = 0) {
 int main() {
     const auto* code = R"(
         i8 main(i16 argc) {
+            // comment 1
+            /*
+                comment 2
+            */
             string s = "Hello, World!";
-            char c = 'c';
+            char c = 'c'; // comment 2
             char c2 = '\n';
             i16 i = 0;
         }
