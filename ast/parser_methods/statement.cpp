@@ -119,12 +119,23 @@ std::optional<ast_node> pm::parse_value(lex_cptr &ptr, const lex_cptr end) {
 
     if (ptr->type == lex::lex_type::IDENTIFIER) {
         if ((ptr + 1)->span == "(") {
-            return ast_node {
+            ast_node method_call {
                 ast_node_type::METHOD_CALL,
-                "",
-                "",
-                parse_split(++ptr, ptr->closer.value(), ",", parse_expression)
+                ptr++->span,
+                ""
             };
+
+            const auto param_end = ptr++->closer.value();
+
+            ast_node arg_list {
+                ast_node_type::PARAM_LIST,
+                "",
+                "",
+                parse_split(ptr, param_end, ",", parse_expression)
+            };
+
+            method_call.add_child(std::move(arg_list));
+            return method_call;
         }
 
         return ast_node {

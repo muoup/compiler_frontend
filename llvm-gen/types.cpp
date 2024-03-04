@@ -7,23 +7,19 @@
 
 using namespace cg_llvm;
 
-#define AS_TYPE_GEN(x) reinterpret_cast<type_getter>(llvm::Type::x)
-
-using type_getter = llvm::Type *(*)(llvm::LLVMContext &);
-
 const std::unordered_map<std::string_view, type_getter> type_generators {
-    { "i8", AS_TYPE_GEN(getInt8Ty) },
-    { "i16", AS_TYPE_GEN(getInt16Ty) },
-    { "i32", AS_TYPE_GEN(getInt32Ty) },
-    { "i64", AS_TYPE_GEN(getInt64Ty) },
+    { "i8", AS_TYPE_GEN(llvm::Type::getInt8Ty) },
+    { "i16", AS_TYPE_GEN(llvm::Type::getInt16Ty) },
+    { "i32", AS_TYPE_GEN(llvm::Type::getInt32Ty) },
+    { "i64", AS_TYPE_GEN(llvm::Type::getInt64Ty) },
 
-    { "f32", AS_TYPE_GEN(getFloatTy) },
-    { "f64", AS_TYPE_GEN(getDoubleTy) },
+    { "f32", AS_TYPE_GEN(llvm::Type::getFloatTy) },
+    { "f64", AS_TYPE_GEN(llvm::Type::getDoubleTy) },
 
-    { "char", AS_TYPE_GEN(getInt8Ty) },
+    { "char", AS_TYPE_GEN(llvm::Type::getInt8Ty) },
 
-    { "bool", AS_TYPE_GEN(getInt8Ty) },
-    { "void", AS_TYPE_GEN(getVoidTy) }
+    { "bool", AS_TYPE_GEN(llvm::Type::getInt8Ty) },
+    { "void", AS_TYPE_GEN(llvm::Type::getVoidTy) }
 };
 
 llvm::Type* cg_llvm::get_llvm_type(const ast::ast_node &node, llvm::LLVMContext &context) {

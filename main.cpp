@@ -5,6 +5,7 @@
 #include "ast/parser_methods/statement.h"
 #include "lexer/lex.h"
 #include "llvm-gen/codegen.h"
+#include "llvm-gen/test.h"
 
 void print_ast(const ast::ast_node& node, const int depth = 0) {
     for (const auto& child : node.children) {
@@ -18,17 +19,19 @@ void print_ast(const ast::ast_node& node, const int depth = 0) {
 int main() {
     const auto* code = R"(
         i8 main() {
-            i16 i = 10;
-            return i;
+            __clib_printf("hi");
+            return 0;
         }
     )";
 
     const auto tokens = lex::lex(code);
-    auto ast = ast::parse(tokens);
+    const auto ast = ast::parse(tokens);
 
     print_ast(ast);
+    std::cout << "-------------\n";
 
     cg_llvm::generate_code(llvm::outs(), ast);
+
 
     // llvm_gen::hello_world_example();
 

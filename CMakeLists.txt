@@ -29,6 +29,8 @@ message("Files: ${FILES}")
 
 add_executable(LLVMProj ${FILES}
         llvm-gen/operators.cpp
-        llvm-gen/operators.h)
+        llvm-gen/operators.h
+        llvm-gen/clib_ref.h
+        llvm-gen/clib_ref.cpp)
 
 target_link_libraries(LLVMProj PRIVATE LLVMCore)

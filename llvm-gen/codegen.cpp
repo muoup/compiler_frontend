@@ -9,6 +9,7 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 
+#include "clib_ref.h"
 #include "types.h"
 #include "../ast/declarations.h"
 
@@ -38,7 +39,7 @@ llvm::Value* scope_data::get_variable(const std::string_view name) const {
     throw std::runtime_error("Variable not found in symbol table.");
 }
 
-llvm::Value* cg_llvm::generate_literal(const ast::ast_node& node, scope_data&) {
+llvm::Value* cg_llvm::generate_literal(const ast::ast_node& node, scope_data& scope) {
     auto& data = node.data;
 
     switch (node.type) {
@@ -59,9 +60,9 @@ llvm::Value* cg_llvm::generate_literal(const ast::ast_node& node, scope_data&) {
                 llvm::APInt(8, data[0])
                 );
         case ast::ast_node_type::STRING_LITERAL:
-            return llvm::ConstantDataArray::getString(context, data);
+            return scope.builder.CreateGlobalStringPtr(data);
         default:
-            throw std::runtime_error("Invalid node type for value generation.");
+            std::unreachable();
     }
 }
 
@@ -75,21 +76,31 @@ llvm::Value *cg_llvm::generate_initialization(const ast::ast_node &node, scope_d
 }
 
 llvm::Value* cg_llvm::generate_method_call(const ast::ast_node& node, scope_data& scope) {
-    llvm::Function* func = scope.root->getFunction(node.data);
-    if (!func)
-        throw std::runtime_error("Function not found in module.");
-
     const auto& arg_list = node.children[0];
+
+    std::vector<llvm::Value*> args;
+    for (auto& child : arg_list.children) {
+        args.emplace_back(generate_statement(child, scope));
+    }
+
+    if (node.data.starts_with("__clib_")) {
+        const auto name = node.data.substr(7);
+
+        auto* func = get_fn_types(name, context);
+        const auto func_ptr = scope.root->getOrInsertFunction(name, func);
+
+        return scope.builder.CreateCall(func_ptr, args);
+    }
+
+    llvm::Function* func = scope.root->getFunction(node.data);
+
+    if (!func)
+        throw std::runtime_error("Function not found.");
 
     if (arg_list.children.size() != func->arg_size())
         throw std::runtime_error("Argument count mismatch.");
 
-    std::vector<llvm::Value*> args;
-    for (size_t i = 0, e = arg_list.children.size(); i != e; ++i) {
-        args.push_back(generate_expression(arg_list.children[i], scope));
-    }
-
-    return nullptr;
+    return scope.builder.CreateCall(func, args);
 }
 
 llvm::Value* cg_llvm::generate_expression(const ast::ast_node& node, scope_data& scope) {

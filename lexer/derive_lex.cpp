@@ -40,7 +40,7 @@ lex::derive_strlit(const str_ptr start, const str_ptr end) {
     if (find == end)
         throw std::runtime_error("Unterminated string literal");
 
-    return derived_lex { lex_type::STRING_LITERAL, start, find - 1, 1 };
+    return derived_lex { lex_type::STRING_LITERAL, start + 1, find - 1, 1 };
 }
 
 std::optional<derived_lex>
