@@ -53,6 +53,8 @@ balance_result cg_llvm::balance_sides(llvm::Value* lhs, llvm::Value* rhs, const 
 llvm::Value* cg_llvm::generate_binop(const ast::ast_node &node, scope_data &data) {
     if (node.type != ast::ast_node_type::BIN_OP)
         throw std::runtime_error("Invalid node type for binary operation generation.");
+    if (node.data == "=")
+        return generate_assignment(node, data);
 
     const auto [lhs, rhs, is_int] = balance_sides(
         generate_expression(node.children[0], data),
@@ -65,4 +67,20 @@ llvm::Value* cg_llvm::generate_binop(const ast::ast_node &node, scope_data &data
         throw std::runtime_error("Invalid binary operator.");
 
     return data.builder.CreateBinOp(binop_map.at(node.data), lhs, rhs);
+}
+
+llvm::Value* cg_llvm::generate_assignment(const ast::ast_node& node, scope_data& data) {
+    if (node.type != ast::ast_node_type::BIN_OP)
+        throw std::runtime_error("Invalid node type for assignment generation.");
+
+    const auto& lh_type = node.children[0].type;
+
+    if (lh_type != ast::ast_node_type::INITIALIZATION && lh_type != ast::ast_node_type::VARIABLE)
+        throw std::runtime_error("Invalid left-hand side type for assignment.");
+
+    auto *lhs = generate_expression(node.children[0], data);
+    auto *rhs = generate_expression(node.children[1], data);
+
+    // Assign the value to the variable.
+    return data.builder.CreateStore(rhs, lhs);
 }

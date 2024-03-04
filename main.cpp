@@ -25,6 +25,9 @@ int main() {
 
     const auto tokens = lex::lex(code);
     auto ast = ast::parse(tokens);
+
+    print_ast(ast);
+
     cg_llvm::generate_code(llvm::outs(), ast);
 
     // llvm_gen::hello_world_example();

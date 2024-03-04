@@ -1,6 +1,7 @@
 #include "codegen.h"
 
 #include <charconv>
+#include <iostream>
 #include <stdexcept>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IRBuilder.h>
@@ -17,11 +18,14 @@ static llvm::LLVMContext context;
 
 using var_table = std::unordered_map<std::string_view, llvm::Type*>;
 
-llvm::Value *scope_data::add_variable(const std::string_view name, llvm::Type *type) const {
+llvm::Value *scope_data::add_variable(const std::string_view name, llvm::Type *type) {
     if (tables.back()->contains(name))
         throw std::runtime_error("Variable already exists in symbol table.");
 
-    tables.back()->emplace(name, builder.CreateAlloca(type));
+    auto* alloca = builder.CreateAlloca(type);
+    alloca->setName(name);
+
+    tables.back()->emplace(name, alloca);
     return get_variable(name);
 }
 
@@ -89,27 +93,25 @@ llvm::Value* cg_llvm::generate_method_call(const ast::ast_node& node, scope_data
 }
 
 llvm::Value* cg_llvm::generate_expression(const ast::ast_node& node, scope_data& scope) {
-    const auto& child = node.children[0];
-
-    switch (child.type) {
+    switch (node.type) {
         case ast::ast_node_type::VARIABLE:
-            return scope.get_variable(child.data);
+            return scope.get_variable(node.data);
 
         case ast::ast_node_type::METHOD_CALL:
-            return generate_method_call(child, scope);
+            return generate_method_call(node, scope);
 
         case ast::ast_node_type::INITIALIZATION:
-            return generate_initialization(child, scope);
+            return generate_initialization(node, scope);
 
         case ast::ast_node_type::BIN_OP:
-            return generate_binop(child, scope);
+            return generate_binop(node, scope);
 
         case ast::ast_node_type::INT_LITERAL:
         case ast::ast_node_type::FLOAT_LITERAL:
         case ast::ast_node_type::CHAR_LITERAL:
         case ast::ast_node_type::STRING_LITERAL:
             // Generate the value
-            return generate_literal(child, scope);
+            return generate_literal(node, scope);
 
         default:
             throw std::runtime_error("Invalid node type for expression generation.");
@@ -120,7 +122,12 @@ llvm::Value* cg_llvm::generate_return(const ast::ast_node& node, scope_data& dat
     if (node.type != ast::ast_node_type::RETURN)
         throw std::runtime_error("Invalid node type for return generation.");
 
-    return data.builder.CreateRet(generate_expression(node.children.front(), data));
+    const auto& ret_val = node.children.front();
+
+    if (ret_val.type != ast::ast_node_type::EXPRESSION)
+        throw std::runtime_error("Invalid node type for return value.");
+
+    return data.builder.CreateRet(generate_expression(ret_val.children.front(), data));
 }
 
 llvm::Value* cg_llvm::generate_statement(const ast::ast_node& node, scope_data& data) {
