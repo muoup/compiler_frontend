@@ -16,6 +16,13 @@ ast_node pm::parse_statement(lex_cptr &ptr, lex_cptr end) {
     if (ptr->span == "if") {
         // return parse_conditional(ptr, end);
         return {};
+    } else if (ptr->span == "return") {
+        return ast_node {
+            ast_node_type::RETURN,
+            "",
+            "",
+            { parse_until(++ptr, end, ";", parse_expression) }
+        };
     }
 
     return parse_until(ptr, end, ";", parse_expression);
@@ -99,7 +106,7 @@ ast_node pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
     while (!op_stack.empty())
         combine_back();
 
-    try_optimize(expr_stack.top());
+    // try_optimize(expr_stack.top());
 
     expr_root.add_child(std::move(expr_stack.top()));
     return expr_root;
@@ -125,9 +132,10 @@ std::optional<ast_node> pm::parse_value(lex_cptr &ptr, const lex_cptr end) {
             ptr++->span,
             ""
         };
-    } else if (lex::LITERAL_SET.contains(ptr->type)) {
+    }
+    else if (lex::LITERAL_MAP.contains(ptr->type)) {
         return ast_node {
-            ast_node_type::LITERAL,
+            lex::LITERAL_MAP.at(ptr->type),
             ptr++->span,
             ""
         };
@@ -138,35 +146,35 @@ std::optional<ast_node> pm::parse_value(lex_cptr &ptr, const lex_cptr end) {
     return std::nullopt;
 }
 
-void pm::try_optimize(ast_node& node) {
-    for (auto& child : node.children) {
-        try_optimize(child);
-    }
-
-    if (node.children.size() != 2)
-        return;
-
-    const auto& child1 = node.children[0];
-    const auto& child2 = node.children[1];
-
-    if (child1.type == ast_node_type::LITERAL && child2.type == ast_node_type::LITERAL) {
-        const auto& data1 = child1.data;
-        const auto& data2 = child2.data;
-
-        int num1, num2;
-        std::from_chars(data1.data(), data1.data() + data1.size(), num1);
-        std::from_chars(data2.data(), data2.data() + data2.size(), num2);
-
-        lex::literals.push_back(
-            std::to_string(
-                pm::binop_fn_map.at(node.data)(num1, num2)
-                )
-            );
-
-        node = ast_node {
-            ast_node_type::LITERAL,
-            "",
-            lex::literals.back()
-        };
-    }
-}
+// void pm::try_optimize(ast_node& node) {
+//     for (auto& child : node.children) {
+//         try_optimize(child);
+//     }
+//
+//     if (node.children.size() != 2)
+//         return;
+//
+//     const auto& child1 = node.children[0];
+//     const auto& child2 = node.children[1];
+//
+//     if (child1.type == ast_node_type::LITERAL && child2.type == ast_node_type::LITERAL) {
+//         const auto& data1 = child1.data;
+//         const auto& data2 = child2.data;
+//
+//         int num1, num2;
+//         std::from_chars(data1.data(), data1.data() + data1.size(), num1);
+//         std::from_chars(data2.data(), data2.data() + data2.size(), num2);
+//
+//         lex::literals.push_back(
+//             std::to_string(
+//                 pm::binop_fn_map.at(node.data)(num1, num2)
+//                 )
+//             );
+//
+//         node = ast_node {
+//             ast_node_type::LITERAL,
+//             "",
+//             lex::literals.back()
+//         };
+//     }
+// }

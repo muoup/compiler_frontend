@@ -21,6 +21,9 @@ namespace llvm_gen {
         // Create the string "Hello, world!\n"
         llvm::Value *helloWorld = builder.CreateGlobalStringPtr("Hello, world!\n");
 
+        // Create a variable and set it equal to 10
+        llvm::AllocaInst *i = builder.CreateAlloca(llvm::Type::getInt32Ty(TheContext), nullptr, "i");
+
         // Call the puts function with the string
         llvm::FunctionCallee putsFunc = module->getOrInsertFunction("puts", llvm::FunctionType::get(llvm::Type::getInt32Ty(TheContext), llvm::Type::getInt8PtrTy(TheContext), true));
         builder.CreateCall(putsFunc, helloWorld);

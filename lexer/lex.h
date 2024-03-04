@@ -1,8 +1,15 @@
 #pragma once
+#include <map>
 #include <optional>
 #include <set>
 #include <string>
 #include <vector>
+
+#include "../ast/declarations.h"
+
+namespace ast {
+    enum class ast_node_type;
+}
 
 namespace lex {
     struct lex_token;
@@ -25,9 +32,11 @@ namespace lex {
         std::optional<lex_ptr> closer;
     };
 
-    const std::set<lex_type> LITERAL_SET = {
-        lex_type::INT_LITERAL, lex_type::FLOAT_LITERAL,
-        lex_type::STRING_LITERAL, lex_type::CHAR_LITERAL
+    const std::map<lex_type, ast::ast_node_type> LITERAL_MAP {
+        { lex_type::INT_LITERAL, ast::ast_node_type::INT_LITERAL },
+        { lex_type::FLOAT_LITERAL, ast::ast_node_type::FLOAT_LITERAL },
+        { lex_type::STRING_LITERAL, ast::ast_node_type::STRING_LITERAL },
+        { lex_type::CHAR_LITERAL, ast::ast_node_type::CHAR_LITERAL }
     };
 
     const std::set<std::string_view> KEYWORD_SET = {

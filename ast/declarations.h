@@ -18,6 +18,8 @@ namespace ast {
         PARAM,
         CODE_BLOCK,
 
+        RETURN,
+
         IF,
         WHILE,
 
@@ -28,7 +30,10 @@ namespace ast {
 
         TYPE,
         VARIABLE,
-        LITERAL,
+        STRING_LITERAL,
+        INT_LITERAL,
+        FLOAT_LITERAL,
+        CHAR_LITERAL,
         INITIALIZATION,
 
         UN_OP,
