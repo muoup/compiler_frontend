@@ -9,7 +9,7 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 
-#include "clib_ref.h"
+#include "libc_ref.h"
 #include "types.h"
 #include "../ast/declarations.h"
 
@@ -83,7 +83,7 @@ llvm::Value* cg_llvm::generate_method_call(const ast::ast_node& node, scope_data
         args.emplace_back(generate_statement(child, scope));
     }
 
-    if (node.data.starts_with("__clib_")) {
+    if (node.data.starts_with("__libc_")) {
         const auto name = node.data.substr(7);
 
         auto* func = get_fn_types(name, context);

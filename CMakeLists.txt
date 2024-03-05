@@ -25,12 +25,6 @@ file(GLOB_RECURSE FILES "*.cpp" "*.h")
 list(FILTER FILES EXCLUDE REGEX "cmake-build.*")
 #list(FILTER FILES EXCLUDE REGEX "llvm-gen/.*")
 
-message("Files: ${FILES}")
-
-add_executable(LLVMProj ${FILES}
-        llvm-gen/operators.cpp
-        llvm-gen/operators.h
-        llvm-gen/clib_ref.h
-        llvm-gen/clib_ref.cpp)
+add_executable(LLVMProj ${FILES})
 
 target_link_libraries(LLVMProj PRIVATE LLVMCore)

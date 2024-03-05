@@ -19,7 +19,8 @@ void print_ast(const ast::ast_node& node, const int depth = 0) {
 int main() {
     const auto* code = R"(
         i8 main() {
-            __clib_printf("hi");
+            i16 i = 10;
+            __libc_printf("%d", i);
             return 0;
         }
     )";
