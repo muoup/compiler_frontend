@@ -192,15 +192,15 @@ std::optional<lex_cptr> ast::find_by_tok_type(const lex_cptr start, const lex_cp
 
 bool ast::is_variable_identifier(const lex_cptr token) {
     return token->type == lex::lex_type::IDENTIFIER
-        || token->type == lex::lex_type::KEYWORD;
+        || token->type == lex::lex_type::PRIMITIVE;
 }
 
-std::optional<ast_node> ast::gen_variable_identifier(lex_cptr& ptr) {
-    if (!is_variable_identifier(ptr))
+std::optional<ast_node> ast::gen_variable_identifier(lex_cptr& token) {
+    if (!is_variable_identifier(token))
         return std::nullopt;
 
     return ast_node {
         ast_node_type::VARIABLE,
-        ptr++->span
+        token++->span
     };
 }

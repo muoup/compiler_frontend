@@ -50,6 +50,27 @@ balance_result cg_llvm::balance_sides(llvm::Value* lhs, llvm::Value* rhs, const 
     };
 }
 
+llvm::Value * cg_llvm::attempt_cast(llvm::Value *val, llvm::Type *to_type, const scope_data &data) {
+    const auto *from_type = val->getType();
+
+    if (from_type == to_type)
+        return val;
+
+    if (from_type->isIntegerTy() && to_type->isIntegerTy())
+        return data.builder.CreateIntCast(val, to_type, true);
+    else if (from_type->isFloatingPointTy() && to_type->isFloatingPointTy())
+        return data.builder.CreateFPCast(val, to_type);
+    else if (from_type->isIntegerTy() && to_type->isFloatingPointTy())
+        return data.builder.CreateSIToFP(val, to_type);
+    else if (from_type->isFloatingPointTy() && to_type->isIntegerTy())
+        return data.builder.CreateFPToSI(val, to_type);
+
+    if (from_type->isPointerTy() && to_type->isPointerTy())
+        return data.builder.CreatePointerCast(val, to_type);
+
+    throw std::runtime_error("Invalid cast.");
+}
+
 llvm::Value* cg_llvm::generate_binop(const ast::ast_node &node, scope_data &data) {
     if (node.type != ast::ast_node_type::BIN_OP)
         throw std::runtime_error("Invalid node type for binary operation generation.");
@@ -78,7 +99,7 @@ llvm::Value* cg_llvm::generate_assignment(const ast::ast_node& node, scope_data&
     if (lh_type != ast::ast_node_type::INITIALIZATION && lh_type != ast::ast_node_type::VARIABLE)
         throw std::runtime_error("Invalid left-hand side type for assignment.");
 
-    auto *lhs = generate_expression(node.children[0], data);
+    auto *lhs = static_cast<llvm::AllocaInst*>(generate_expression(node.children[0], data));
     auto *rhs = generate_expression(node.children[1], data);
 
     // Assign the value to the variable.

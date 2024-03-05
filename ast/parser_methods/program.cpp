@@ -37,9 +37,12 @@ ast_node pm::parse_method(lex_cptr& ptr, const lex_cptr) {
         parse_between(ptr, "(", parse_method_params)
     );
 
-    method.add_child(
+    auto& code_block = method.add_child(
         parse_between(ptr, "{", parse_body)
     );
+
+    if (code_block.children.empty() || code_block.children.back().type != ast_node_type::RETURN)
+        code_block.add_child(ast_node_type::RETURN);
 
     return method;
 }

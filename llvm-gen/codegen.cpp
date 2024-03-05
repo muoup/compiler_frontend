@@ -1,7 +1,6 @@
 #include "codegen.h"
 
 #include <charconv>
-#include <iostream>
 #include <stdexcept>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IRBuilder.h>
@@ -10,6 +9,7 @@
 #include <llvm/IR/Type.h>
 
 #include "libc_ref.h"
+#include "operators.h"
 #include "types.h"
 #include "../ast/declarations.h"
 
@@ -19,7 +19,7 @@ static llvm::LLVMContext context;
 
 using var_table = std::unordered_map<std::string_view, llvm::Type*>;
 
-llvm::Value *scope_data::add_variable(const std::string_view name, llvm::Type *type) {
+llvm::AllocaInst *scope_data::add_variable(const std::string_view name, llvm::Type *type) const {
     if (tables.back()->contains(name))
         throw std::runtime_error("Variable already exists in symbol table.");
 
@@ -30,7 +30,7 @@ llvm::Value *scope_data::add_variable(const std::string_view name, llvm::Type *t
     return get_variable(name);
 }
 
-llvm::Value* scope_data::get_variable(const std::string_view name) const {
+llvm::AllocaInst *scope_data::get_variable(const std::string_view name) const {
     for (auto it = tables.rbegin(); it != tables.rend(); ++it) {
         if ((*it)->contains(name))
             return (*it)->at(name);
@@ -70,9 +70,7 @@ llvm::Value *cg_llvm::generate_initialization(const ast::ast_node &node, scope_d
     if (node.type != ast::ast_node_type::INITIALIZATION)
         throw std::runtime_error("Invalid node type for initialization generation.");
 
-    auto* type = get_llvm_type(node, context);
-
-    return scope.add_variable(node.data, type);
+    return scope.add_variable(node.data, get_llvm_type(node, context));
 }
 
 llvm::Value* cg_llvm::generate_method_call(const ast::ast_node& node, scope_data& scope) {
@@ -83,30 +81,25 @@ llvm::Value* cg_llvm::generate_method_call(const ast::ast_node& node, scope_data
         args.emplace_back(generate_statement(child, scope));
     }
 
-    if (node.data.starts_with("__libc_")) {
-        const auto name = node.data.substr(7);
-
-        auto* func = get_fn_types(name, context);
-        const auto func_ptr = scope.root->getOrInsertFunction(name, func);
-
-        return scope.builder.CreateCall(func_ptr, args);
-    }
-
-    llvm::Function* func = scope.root->getFunction(node.data);
+    llvm::Function* func = node.data.starts_with(libc_prefix) ?
+        get_libc_fn(node.data, scope) : scope.root->getFunction(node.data);
 
     if (!func)
         throw std::runtime_error("Function not found.");
 
-    if (arg_list.children.size() != func->arg_size())
+    if (arg_list.children.size() != func->arg_size() && !func->isVarArg())
         throw std::runtime_error("Argument count mismatch.");
 
     return scope.builder.CreateCall(func, args);
 }
 
 llvm::Value* cg_llvm::generate_expression(const ast::ast_node& node, scope_data& scope) {
+    llvm::AllocaInst* var;
+
     switch (node.type) {
         case ast::ast_node_type::VARIABLE:
-            return scope.get_variable(node.data);
+            var = scope.get_variable(node.data);
+            return scope.builder.CreateLoad(var->getType(), var, node.data);
 
         case ast::ast_node_type::METHOD_CALL:
             return generate_method_call(node, scope);
@@ -133,12 +126,19 @@ llvm::Value* cg_llvm::generate_return(const ast::ast_node& node, scope_data& dat
     if (node.type != ast::ast_node_type::RETURN)
         throw std::runtime_error("Invalid node type for return generation.");
 
-    const auto& ret_val = node.children.front();
+    llvm::Value* ret_val = nullptr;
 
-    if (ret_val.type != ast::ast_node_type::EXPRESSION)
-        throw std::runtime_error("Invalid node type for return value.");
+    if (!node.children.empty()) {
+        const auto& ret_node = node.children.front();
 
-    return data.builder.CreateRet(generate_expression(ret_val.children.front(), data));
+        if (ret_node.type != ast::ast_node_type::EXPRESSION)
+            throw std::runtime_error("Invalid node type for return value.");
+
+        ret_val = generate_expression(ret_node.children.front(), data);
+        ret_val = attempt_cast(ret_val, data.current_function->getReturnType(), data);
+    }
+
+    return data.builder.CreateRet(ret_val);
 }
 
 llvm::Value* cg_llvm::generate_statement(const ast::ast_node& node, scope_data& data) {
@@ -191,6 +191,7 @@ llvm::Function* cg_llvm::generate_method(const ast::ast_node& node, std::shared_
         .context = context,
         .root = root,
         .builder = builder,
+        .current_function = func,
         .tables = { }
     };
 

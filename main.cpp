@@ -5,7 +5,6 @@
 #include "ast/parser_methods/statement.h"
 #include "lexer/lex.h"
 #include "llvm-gen/codegen.h"
-#include "llvm-gen/test.h"
 
 void print_ast(const ast::ast_node& node, const int depth = 0) {
     for (const auto& child : node.children) {
@@ -18,9 +17,13 @@ void print_ast(const ast::ast_node& node, const int depth = 0) {
 
 int main() {
     const auto* code = R"(
-        i8 main() {
+        void test() {
             i16 i = 10;
             __libc_printf("%d", i);
+        }
+
+        i8 main() {
+            test();
             return 0;
         }
     )";

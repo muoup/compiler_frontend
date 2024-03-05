@@ -8,7 +8,6 @@
 #include "../declarations.h"
 #include "../util_methods.h"
 #include "../../lexer/lex.h"
-#include "../../lexer/literal_cache.h"
 
 using namespace ast;
 
@@ -113,8 +112,7 @@ ast_node pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
 }
 
 std::optional<ast_node> pm::parse_value(lex_cptr &ptr, const lex_cptr end) {
-    if (ptr->type == lex::lex_type::KEYWORD
-        || ptr->type == lex::lex_type::IDENTIFIER && (ptr + 1)->type == lex::lex_type::IDENTIFIER)
+    if (ptr->type == lex::lex_type::KEYWORD || ptr->type == lex::lex_type::PRIMITIVE)
         return parse_initialization(ptr, end);
 
     if (ptr->type == lex::lex_type::IDENTIFIER) {
@@ -135,6 +133,7 @@ std::optional<ast_node> pm::parse_value(lex_cptr &ptr, const lex_cptr end) {
             };
 
             method_call.add_child(std::move(arg_list));
+            ptr = param_end + 1;
             return method_call;
         }
 

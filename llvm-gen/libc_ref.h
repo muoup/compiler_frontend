@@ -2,10 +2,14 @@
 #include <unordered_map>
 #include <vector>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Function.h>
 
+#include "codegen.h"
 #include "types.h"
 
 namespace cg_llvm {
+    constexpr std::string_view libc_prefix = "__libc_";
+
     const type_getter str_ptr = [] (llvm::LLVMContext& context) {
         return static_cast<llvm::Type *>(llvm::PointerType::get(llvm::Type::getInt8Ty(context), 0));
     };
@@ -17,8 +21,12 @@ namespace cg_llvm {
     };
 
     inline std::unordered_map<std::string_view, clib_func> func_map = {
+        { "puts", { false, AS_TYPE_GEN(llvm::Type::getInt32Ty), { str_ptr } } },
         { "printf", { true, AS_TYPE_GEN(llvm::Type::getInt32Ty), { str_ptr } } },
+        { "scanf", { true, AS_TYPE_GEN(llvm::Type::getInt32Ty), { str_ptr } } },
+        { "malloc", { false, AS_TYPE_GEN(llvm::Type::getInt8PtrTy), { AS_TYPE_GEN(llvm::Type::getInt64Ty) } } },
+        { "free", { false, AS_TYPE_GEN(llvm::Type::getVoidTy), { AS_TYPE_GEN(llvm::Type::getInt8PtrTy) } } }
     };
 
-    llvm::FunctionType *get_fn_types(std::string_view name, llvm::LLVMContext &context);
+    llvm::Function *get_libc_fn(const std::string_view name, scope_data &scope);
 }

@@ -18,7 +18,7 @@ namespace ast {
 }
 
 namespace cg_llvm {
-    using var_table = std::unordered_map<std::string_view, llvm::Value*>;
+    using var_table = std::unordered_map<std::string_view, llvm::AllocaInst*>;
 
     struct scope_data {
         llvm::LLVMContext &context;
@@ -26,8 +26,10 @@ namespace cg_llvm {
         llvm::IRBuilder<> &builder;
         std::vector<var_table*> tables;
 
-        llvm::Value* add_variable(std::string_view name, llvm::Type* type);
-        llvm::Value* get_variable(std::string_view name) const;
+        llvm::Function* current_function = nullptr;
+
+        llvm::AllocaInst *add_variable(std::string_view name, llvm::Type *type) const;
+        llvm::AllocaInst *get_variable(std::string_view name) const;
     };
 
     void generate_code(llvm::raw_ostream &out, const ast::ast_node &root);

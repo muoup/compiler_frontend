@@ -1,4 +1,5 @@
 #pragma once
+#include <llvm/IR/Type.h>
 
 namespace ast {
     struct ast_node;
@@ -21,5 +22,7 @@ namespace cg_llvm {
 
     llvm::Value* generate_assignment(const ast::ast_node &node, scope_data &data);
 
-    balance_result balance_sides(llvm::Value* lhs, llvm::Value* rhs, const scope_data& data);
+    balance_result balance_sides(llvm::Value *lhs, llvm::Value *rhs, const scope_data& data);
+
+    llvm::Value* attempt_cast(llvm::Value *val, llvm::Type *to_type, const scope_data &data);
 }

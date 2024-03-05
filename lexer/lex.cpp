@@ -33,6 +33,8 @@ void output_buffer(const auto buffer_start, const auto buffer_end, std::vector<l
         tokens.push_back(gen_numeric(buffer_start, buffer_end));
     else if (KEYWORD_SET.contains(shaved_buffer))
         tokens.emplace_back(lex_type::KEYWORD, shaved_buffer);
+    else if (PRIMITIVES_SET.contains(shaved_buffer))
+        tokens.emplace_back(lex_type::PRIMITIVE, shaved_buffer);
     else
         tokens.emplace_back(lex_type::IDENTIFIER, shaved_buffer);
 }

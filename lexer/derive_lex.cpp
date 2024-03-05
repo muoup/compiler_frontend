@@ -7,17 +7,14 @@
 
 using namespace lex;
 
-bool
-ident_end(const char c) {
+bool ident_end(const char c) {
     return SYMBOL_SET.contains(c) || c == ' ' || c == '\n';
 }
 
-lex_token
-lex::gen_numeric(const str_ptr start, const str_ptr end) {
+lex_token lex::gen_numeric(const str_ptr start, const str_ptr end) {
     lex_type type = lex_type::INT_LITERAL;
-    auto ptr = start;
 
-    for (; ptr != end; ++ptr) {
+    for (auto ptr = start; ptr != end; ++ptr) {
         if (*ptr == '.' && type == lex_type::INT_LITERAL)
             type = lex_type::FLOAT_LITERAL;
         else if (!isdigit(*ptr))
@@ -27,8 +24,7 @@ lex::gen_numeric(const str_ptr start, const str_ptr end) {
     return { type, { start, end } };
 }
 
-std::optional<derived_lex>
-lex::derive_strlit(const str_ptr start, const str_ptr end) {
+std::optional<derived_lex> lex::derive_strlit(const str_ptr start, const str_ptr end) {
     if (*start != '\"')
         return std::nullopt;
 
@@ -43,8 +39,7 @@ lex::derive_strlit(const str_ptr start, const str_ptr end) {
     return derived_lex { lex_type::STRING_LITERAL, start + 1, find - 1, 1 };
 }
 
-std::optional<derived_lex>
-lex::derive_charlit(const str_ptr start, const str_ptr end) {
+std::optional<derived_lex> lex::derive_charlit(const str_ptr start, const str_ptr end) {
     if (*start != '\'')
         return std::nullopt;
 
@@ -57,8 +52,7 @@ lex::derive_charlit(const str_ptr start, const str_ptr end) {
     return derived_lex { lex_type::CHAR_LITERAL, start + 1, start + expected_end - 1, 1 };
 }
 
-std::optional<derived_lex>
-lex::derive_operator(const str_ptr start, const str_ptr end) {
+std::optional<derived_lex> lex::derive_operator(const str_ptr start, const str_ptr end) {
     if (!SYMBOL_SET.contains(*start))
         return std::nullopt;
 
@@ -67,8 +61,7 @@ lex::derive_operator(const str_ptr start, const str_ptr end) {
     return derived_lex { lex_type::SYMBOL, start, start + is_special };
 }
 
-std::optional<derived_lex>
-lex::derive_punctuator(const str_ptr start, const str_ptr) {
+std::optional<derived_lex> lex::derive_punctuator(const str_ptr start, const str_ptr) {
     if (!PUNCTUATOR_SET.contains(*start))
         return std::nullopt;
 

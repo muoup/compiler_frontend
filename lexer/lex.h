@@ -19,6 +19,7 @@ namespace lex {
     enum class lex_type {
         NONE, // No token
         KEYWORD, // if, while, for, etc.
+        PRIMITIVE, // i8, i16, i32, etc.
         IDENTIFIER, // Variable name, function name, etc.
         INT_LITERAL, FLOAT_LITERAL, STRING_LITERAL, CHAR_LITERAL,
         SYMBOL, // +, -, *, /, and punctuators like (, ), {, }, etc.
@@ -39,17 +40,21 @@ namespace lex {
         { lex_type::CHAR_LITERAL, ast::ast_node_type::CHAR_LITERAL }
     };
 
-    const std::set<std::string_view> KEYWORD_SET = {
+    const std::set<std::string_view> KEYWORD_SET {
         "if", "while", "for", "switch",
 
+        "return"
+    };
+
+    const std::set<std::string_view> PRIMITIVES_SET {
         "i8", "i16", "i32", "i64",
         "u8", "u16", "u32", "u64",
         "f32", "f64",
 
-        "bool", "char", "void"
+        "bool", "char", "void",
     };
 
-    const std::set<char> SYMBOL_SET = {
+    const std::set<char> SYMBOL_SET {
         '=', '+', '-', '*', '/', '%',
         '!', '&', '|', '^', '~', '<', '>', '?', ':',
 
