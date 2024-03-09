@@ -31,21 +31,9 @@ int main() {
     const auto tokens = lex::lex(code);
     const auto ast = ast::parse(tokens);
 
-    print_ast(ast);
     std::cout << "-------------\n";
 
     cg_llvm::generate_code(llvm::outs(), ast);
-
-
-    // llvm_gen::hello_world_example();
-
-    // const auto* statement = "string s = \"Hello, World!\";";
-    //
-    // const auto stmt_toks = lex::lex(statement);
-    // auto ptr = stmt_toks.cbegin();
-    // auto ast = ast::pm::parse_statement(ptr, stmt_toks.cend());
-
-    // print_ast(ast);
 
     return 0;
 }

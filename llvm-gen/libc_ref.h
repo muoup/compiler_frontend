@@ -25,7 +25,8 @@ namespace cg_llvm {
         { "printf", { true, AS_TYPE_GEN(llvm::Type::getInt32Ty), { str_ptr } } },
         { "scanf", { true, AS_TYPE_GEN(llvm::Type::getInt32Ty), { str_ptr } } },
         { "malloc", { false, AS_TYPE_GEN(llvm::Type::getInt8PtrTy), { AS_TYPE_GEN(llvm::Type::getInt64Ty) } } },
-        { "free", { false, AS_TYPE_GEN(llvm::Type::getVoidTy), { AS_TYPE_GEN(llvm::Type::getInt8PtrTy) } } }
+        { "free", { false, AS_TYPE_GEN(llvm::Type::getVoidTy), { AS_TYPE_GEN(llvm::Type::getInt8PtrTy) } } },
+        { "scanf", { true, AS_TYPE_GEN(llvm::Type::getInt32Ty), { str_ptr } } }
     };
 
     llvm::Function *get_libc_fn(const std::string_view name, scope_data &scope);
