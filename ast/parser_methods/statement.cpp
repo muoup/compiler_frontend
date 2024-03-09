@@ -155,36 +155,3 @@ std::optional<ast_node> pm::parse_value(lex_cptr &ptr, const lex_cptr end) {
 
     return std::nullopt;
 }
-
-// void pm::try_optimize(ast_node& node) {
-//     for (auto& child : node.children) {
-//         try_optimize(child);
-//     }
-//
-//     if (node.children.size() != 2)
-//         return;
-//
-//     const auto& child1 = node.children[0];
-//     const auto& child2 = node.children[1];
-//
-//     if (child1.type == ast_node_type::LITERAL && child2.type == ast_node_type::LITERAL) {
-//         const auto& data1 = child1.data;
-//         const auto& data2 = child2.data;
-//
-//         int num1, num2;
-//         std::from_chars(data1.data(), data1.data() + data1.size(), num1);
-//         std::from_chars(data2.data(), data2.data() + data2.size(), num2);
-//
-//         lex::literals.push_back(
-//             std::to_string(
-//                 pm::binop_fn_map.at(node.data)(num1, num2)
-//                 )
-//             );
-//
-//         node = ast_node {
-//             ast_node_type::LITERAL,
-//             "",
-//             lex::literals.back()
-//         };
-//     }
-// }

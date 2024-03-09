@@ -27,17 +27,14 @@ namespace ast::nodes {
         code_block body;
     };
 
-    struct invokable : node {
+    struct conditional {
+        expression condition;
         code_block body;
     };
 
-    struct if_cond : invokable {
-        expression condition;
-    };
+    struct if_cond : conditional {};
 
-    struct while_cond : invokable {
-        expression condition;
-    };
+    struct while_cond : conditional {};
 
     struct initialization : expression {
         bool is_const;

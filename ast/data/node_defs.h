@@ -5,8 +5,9 @@ namespace ast::nodes {
 
     struct root;
 
-    struct invokable;
     struct function;
+
+    struct conditional;
     struct if_cond;
     struct while_cond;
 

@@ -2,20 +2,20 @@
 
 #include <format>
 #include "../lexer/lex.h"
+#include "data/ast_nodes.h"
 #include "parser_methods/program.h"
 
 using namespace ast;
 
-ast_node ast::parse(const std::vector<lex::lex_token> &tokens) {
-    ast_node root { ast_node_type::ROOT };
+nodes::root ast::parse(const std::vector<lex::lex_token> &tokens) {
+    nodes::root root = {};
 
     auto ptr = tokens.cbegin();
     const auto end = tokens.cend();
 
     while (ptr < end) {
-        root.add_child(
-            pm::parse_method(ptr, end)
-        );
+        root.functions
+            .emplace_back(pm::parse_method(ptr, end));
     }
 
     return root;

@@ -33,7 +33,7 @@ int main() {
 
     std::cout << "-------------\n";
 
-    cg_llvm::generate_code(llvm::outs(), ast);
+    //cg_llvm::generate_code(llvm::outs(), ast);
 
     return 0;
 }
