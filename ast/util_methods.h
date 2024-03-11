@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "declarations.h"
+#include "data/ast_nodes.h"
 
 namespace ast {
     void throw_unexpected(const lex::lex_token& token, std::string_view expected = "No explanation given.");
@@ -28,18 +29,30 @@ namespace ast {
 
     bool is_variable_identifier(lex_cptr token);
 
-    loop_fn test_token_predicate(auto pred);
-
     std::optional<ast_node> gen_variable_identifier(lex_cptr& token);
 
-    ast_node parse_until(lex_cptr& ptr, lex_cptr end, std::string_view until, parse_fn fn, bool assert_contains = true);
-    ast_node parse_between(lex_cptr& ptr, parse_fn fn);
-    ast_node parse_between(lex_cptr& ptr, std::string_view exp_val, parse_fn fn);
+    template <typename T>
+    loop_fn<T> test_token_predicate(parse_pred pred);
 
-    std::optional<ast_node> try_parse(lex_cptr &ptr, const lex_cptr end, parse_fn fn);
+    template <typename T>
+    T parse_until(lex_cptr &ptr, lex_cptr end, std::string_view until, parse_fn<T> fn,
+                                 bool assert_contains = true);
 
-    ast_node try_parse(lex_cptr &ptr, lex_cptr end, parse_fn fn, auto... fn_va);
+    template <typename T>
+    T parse_between(lex_cptr& ptr, parse_fn<T> fn);
 
-    std::vector<ast_node> parse_split(lex_cptr& ptr, lex_cptr end, std::string_view split_val, parse_fn fn);
-    std::vector<ast_node> capture_contiguous(lex_cptr& ptr, lex_cptr end, loop_fn fn);
+    template <typename T>
+    T parse_between(lex_cptr& ptr, std::string_view exp_val, parse_fn<T> fn);
+
+    template <typename T>
+    std::optional<T> try_parse(lex_cptr &ptr, lex_cptr end, parse_fn<T> fn);
+
+    template <typename T>
+    T try_parse(lex_cptr &ptr, lex_cptr end, parse_fn<T> fn, auto... fn_va);
+
+    template <typename T>
+    std::vector<T> parse_split(lex_cptr& ptr, lex_cptr end, std::string_view split_val, parse_fn<T> fn);
+
+    template <typename T>
+    std::vector<T> capture_contiguous(lex_cptr& ptr, lex_cptr end, loop_fn<T> fn);
 }

@@ -4,90 +4,76 @@
 
 #include <vector>
 #include <memory>
+#include <optional>
 
 namespace ast::nodes {
-    struct node {};
-
-    struct root : node {
+    struct root {
         std::vector<function> functions;
+        std::vector<initialization> global_vars;
+
+        // TODO: Struct and enum definitions
     };
 
-    struct expression : node {
-        std::unique_ptr<op> operation;
+    struct code_block {
+        std::vector<statement> expressions;
     };
 
-    struct code_block : node {
-        std::vector<expression> expressions;
-    };
-
-    struct function : node {
+    struct function {
         value_type return_type;
+        std::string_view function_name;
         std::vector<value_type> param_types;
 
         code_block body;
     };
 
-    struct conditional {
-        expression condition;
-        code_block body;
+    struct variable {
+        std::string_view name;
     };
 
-    struct if_cond : conditional {};
-
-    struct while_cond : conditional {};
-
-    struct initialization : expression {
-        bool is_const;
+    struct initialization {
         value_type type;
-        std::string_view variable_name;
+        variable var;
     };
 
-    struct method_call : expression {
+    struct method_call {
         std::string_view method_name;
         std::vector<expression> arguments;
     };
 
-    struct op : node {};
-
-    struct return_op : op {
-        expression value;
+    struct op {
+        operator_type type;
+        std::vector<expression> operands;
     };
 
-    struct assignment : op {
+    struct literal {
+        std::variant<unsigned int, int, double, char, std::string_view> value;
+    };
+
+    struct assignment {
         std::variant<initialization, std::string_view> variable;
-        expression value;
-    };
-
-    struct un_op : op {
-        std::string_view operation;
-        std::unique_ptr<expression> operand;
-    };
-
-    struct bin_op : op {
-        std::string_view operation;
-        std::unique_ptr<expression> left;
-        std::unique_ptr<expression> right;
-    };
-
-    struct literal : expression {};
-
-    struct string_literal : literal {
         std::string_view value;
     };
 
-    struct int_literal : literal {
-        int64_t value;
+    struct expression {
+        std::variant<method_call, assignment, variable, initialization, op, literal> value;
     };
 
-    struct uint_literal : literal {
-        uint64_t value;
+    enum conditional_type {
+        IF_STATEMENT,
+        WHILE_LOOP,
+        DO_WHILE_LOOP
+    };
+    struct conditional {
+        conditional_type type;
+        expression condition;
+        code_block body;
     };
 
-    struct fp_literal : literal {
-        double_t value;
+    struct return_op {
+        std::optional<expression> value;
     };
 
-    struct char_literal : literal {
-        char value;
+    struct statement {
+        std::variant<return_op, expression, conditional, initialization> value;
     };
 }

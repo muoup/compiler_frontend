@@ -1,8 +1,7 @@
 #pragma once
-#include <map>
+
 #include <optional>
-#include <set>
-#include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "../ast/declarations.h"
@@ -33,20 +32,20 @@ namespace lex {
         std::optional<lex_ptr> closer;
     };
 
-    const std::map<lex_type, ast::ast_node_type> LITERAL_MAP {
-        { lex_type::INT_LITERAL, ast::ast_node_type::INT_LITERAL },
-        { lex_type::FLOAT_LITERAL, ast::ast_node_type::FLOAT_LITERAL },
-        { lex_type::STRING_LITERAL, ast::ast_node_type::STRING_LITERAL },
-        { lex_type::CHAR_LITERAL, ast::ast_node_type::CHAR_LITERAL }
+    const std::unordered_set<lex_type> LITERAL_SET {
+        lex_type::INT_LITERAL, lex_type::FLOAT_LITERAL,
+        lex_type::STRING_LITERAL, lex_type::CHAR_LITERAL
     };
 
-    const std::set<std::string_view> KEYWORD_SET {
+    const std::unordered_set<std::string_view> KEYWORD_SET {
         "if", "while", "for", "switch",
+
+        "mut",
 
         "return"
     };
 
-    const std::set<std::string_view> PRIMITIVES_SET {
+    const std::unordered_set<std::string_view> PRIMITIVES_SET {
         "i8", "i16", "i32", "i64",
         "u8", "u16", "u32", "u64",
         "f32", "f64",
@@ -54,18 +53,18 @@ namespace lex {
         "bool", "char", "void",
     };
 
-    const std::set<char> SYMBOL_SET {
+    const std::unordered_set<char> SYMBOL_SET {
         '=', '+', '-', '*', '/', '%',
         '!', '&', '|', '^', '~', '<', '>', '?', ':',
 
         ',', '.', '#', ';'
     };
 
-    const std::set<char> PUNCTUATOR_SET = {
+    const std::unordered_set<char> PUNCTUATOR_SET = {
         '{', '}', '(', ')', '[', ']'
     };
 
-    const std::set<std::string_view> SPECIAL_SYMBOL = {
+    const std::unordered_set<std::string_view> SPECIAL_SYMBOL = {
         "==", "!=", "<=", ">=",
         "&&", "||",
         "++", "--", "**",

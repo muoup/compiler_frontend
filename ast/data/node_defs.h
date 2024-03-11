@@ -7,6 +7,7 @@ namespace ast::nodes {
 
     struct function;
 
+    struct statement;
     struct conditional;
     struct if_cond;
     struct while_cond;
@@ -15,6 +16,7 @@ namespace ast::nodes {
 
     struct expression;
     struct assignment;
+    struct variable;
     struct initialization;
     struct method_call;
 

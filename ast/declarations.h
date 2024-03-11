@@ -62,7 +62,11 @@ namespace ast {
     using lex_cptr = std::vector<lex::lex_token>::const_iterator;
     using lex_ptr = std::vector<lex::lex_token>::iterator;
 
-    using parse_fn = ast_node(*)(lex_cptr&, lex_cptr);
-    using loop_fn = std::optional<ast_node>(*)(lex_cptr&);
+    template <typename T>
+    using parse_fn = T(*)(lex_cptr&, lex_cptr);
+
+    template <typename T>
+    using loop_fn = std::optional<T>(*)(lex_cptr&);
+
     using parse_pred = bool(*)(lex_cptr);
 }
