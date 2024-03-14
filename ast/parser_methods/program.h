@@ -1,4 +1,5 @@
 #pragma once
+
 #include "../declarations.h"
 #include "../data/ast_nodes.h"
 #include "../data/abstract_data.h"

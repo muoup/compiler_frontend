@@ -11,7 +11,9 @@ namespace ast::nodes {
         infer_type
     };
 
-    enum class operator_type {
+    enum class bin_op_type {
+        invalid,
+
         add, sub, mul, div, mod,
         eq, neq, lt, gt, lte, gte,
         land, lor, and_, or_, not_, xor_, sshl, sshr, pow,
@@ -19,8 +21,12 @@ namespace ast::nodes {
         assign,
         assign_add, assign_sub, assign_mul, assign_div, assign_mod, assign_pow,
         assign_and, assign_or, assign_xor, assign_shift_left, assign_shift_right,
+    };
 
-        invalid
+    enum class un_op_type {
+        invalid,
+
+        dereference, address_of, not_, negate, bitwise_not
     };
 
     struct value_type {

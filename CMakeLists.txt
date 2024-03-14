@@ -22,7 +22,6 @@ set(CMAKE_CXX_STANDARD 23)
 file(GLOB_RECURSE FILES "*.cpp" "*.h")
 list(FILTER FILES EXCLUDE REGEX "cmake-build.*")
 
-add_executable(LLVMProj ${FILES}
-        ast/data/ast_nodes.h)
+add_executable(LLVMProj ${FILES})
 
 target_link_libraries(LLVMProj PRIVATE LLVMCore)

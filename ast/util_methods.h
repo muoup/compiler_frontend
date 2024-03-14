@@ -1,12 +1,12 @@
 #pragma once
 
+#include <format>
 #include <optional>
 #include <span>
-#include <string_view>
+#include <stdexcept>
 #include <vector>
 
 #include "declarations.h"
-#include "data/ast_nodes.h"
 
 namespace ast {
     void throw_unexpected(const lex::lex_token& token, std::string_view expected = "No explanation given.");
@@ -31,28 +31,100 @@ namespace ast {
 
     std::optional<ast_node> gen_variable_identifier(lex_cptr& token);
 
-    template <typename T>
-    loop_fn<T> test_token_predicate(parse_pred pred);
+    template <typename T, typename lex_cptr>
+    T parse_until(lex_cptr &ptr, lex_cptr end, std::string_view until, const parse_fn<T> fn,
+                                      const bool assert_contains = true) {
+        const auto terminate = find_by_tok_val(ptr, end, until)
+            .or_else([assert_contains, end, &until] -> std::optional<lex_cptr> {
+                if (assert_contains)
+                    throw std::runtime_error(std::format("Expected but never found: {}", until));
+                return end;
+            }).value();
 
-    template <typename T>
-    T parse_until(lex_cptr &ptr, lex_cptr end, std::string_view until, parse_fn<T> fn,
-                                 bool assert_contains = true);
+        auto ret_node = fn(ptr, terminate);
+        ptr = terminate + 1;
 
-    template <typename T>
-    T parse_between(lex_cptr& ptr, parse_fn<T> fn);
+        return ret_node;
+    }
 
-    template <typename T>
-    T parse_between(lex_cptr& ptr, std::string_view exp_val, parse_fn<T> fn);
+    template <typename T, typename lex_cptr>
+    T parse_between(lex_cptr& ptr, const parse_fn<T> fn) {
+        if (!ptr->closer)
+            throw std::runtime_error(std::format("Tried to parse between a token with no closer. Token: {}", ptr->span));
 
-    template <typename T>
-    std::optional<T> try_parse(lex_cptr &ptr, lex_cptr end, parse_fn<T> fn);
+        const auto end = ptr->closer.value();
+        auto node = fn(++ptr, end);
 
-    template <typename T>
-    T try_parse(lex_cptr &ptr, lex_cptr end, parse_fn<T> fn, auto... fn_va);
+        ptr = end + 1;
 
-    template <typename T>
-    std::vector<T> parse_split(lex_cptr& ptr, lex_cptr end, std::string_view split_val, parse_fn<T> fn);
+        return node;
+    }
 
-    template <typename T>
-    std::vector<T> capture_contiguous(lex_cptr& ptr, lex_cptr end, loop_fn<T> fn);
+    template <typename T, typename lex_cptr>
+    T parse_between(lex_cptr& ptr, std::string_view val, const parse_fn<T> fn) {
+        if (ptr->span != val)
+            throw std::runtime_error(std::format("Expected: {} but got: {}", val, ptr->span));
+
+        return parse_between(ptr, fn);
+    }
+
+    template <typename T, typename lex_cptr>
+    std::vector<T> parse_split(lex_cptr& ptr, const lex_cptr end, const std::string_view split_val, const parse_fn<T> fn) {
+        std::vector<T> split;
+
+        ++ptr;
+
+        while (ptr < end) {
+            split.emplace_back(
+                parse_until<T, lex_cptr>(ptr, end, split_val, fn, false)
+            );
+        }
+
+        return split;
+    }
+
+    template <typename T, typename lex_cptr>
+    std::optional<T> try_parse(lex_cptr &ptr, const lex_cptr end, const parse_fn<T> fn) {
+        const lex_cptr start_cache = ptr;
+
+        try {
+            return fn(ptr, end);
+        } catch (const std::runtime_error&) {
+            ptr = start_cache;
+            return std::nullopt;
+        }
+    }
+
+    template <typename T, typename lex_cptr>
+    std::vector<T> capture_contiguous(lex_cptr& ptr, const lex_cptr end, const loop_fn<T> fn) {
+        std::vector<T> nodes;
+
+        while (auto node = ptr < end ? fn(ptr) : std::nullopt)
+            nodes.emplace_back(node.value());
+
+        return nodes;
+    }
+
+    template <typename T, typename lex_cptr>
+    T try_parse(lex_cptr &ptr, const lex_cptr end, const parse_fn<T> fn, auto... fn_va) {
+        if (auto node = try_parse(ptr, end, fn)) {
+            return node.value();
+        }
+
+        if constexpr (sizeof...(fn_va) == 0) {
+            throw std::runtime_error("No more functions to try!");
+        }
+
+        return ast::try_parse(ptr, fn_va...);
+    }
+
+    template <typename T, typename lex_cptr>
+    loop_fn<T> test_token_predicate(parse_pred pred) {
+        return [pred](lex_cptr& ptr) -> std::optional<lex_cptr> {
+            if (!pred(ptr))
+                return std::nullopt;
+
+            return ptr++;
+        };
+    }
 }

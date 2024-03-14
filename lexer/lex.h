@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string_view>
 #include <optional>
 #include <unordered_set>
 #include <vector>
@@ -21,7 +22,7 @@ namespace lex {
         PRIMITIVE, // i8, i16, i32, etc.
         IDENTIFIER, // Variable name, function name, etc.
         INT_LITERAL, FLOAT_LITERAL, STRING_LITERAL, CHAR_LITERAL,
-        SYMBOL, // +, -, *, /, and punctuators like (, ), {, }, etc.
+        SYMBOL, // +, -, *, /, etc
         PUNCTUATOR
     };
 

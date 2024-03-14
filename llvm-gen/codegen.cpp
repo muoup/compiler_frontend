@@ -191,8 +191,8 @@ llvm::Function* cg_llvm::generate_method(const ast::ast_node& node, std::shared_
         .context = context,
         .root = root,
         .builder = builder,
+        .tables = { },
         .current_function = func,
-        .tables = { }
     };
 
     generate_block(node.children[1], scope_data);

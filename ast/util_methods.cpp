@@ -8,68 +8,6 @@
 
 using namespace ast;
 
-template <typename T>
-T ast::parse_until(lex_cptr &ptr, lex_cptr end, std::string_view until, const parse_fn<T> fn,
-                                  const bool assert_contains) {
-    const auto terminate = find_by_tok_val(ptr, end, until)
-        .or_else([assert_contains, end, &until] -> std::optional<lex_cptr> {
-            if (assert_contains)
-                throw std::runtime_error(std::format("Expected but never found: {}", until));
-            return end;
-        }).value();
-
-    const auto ret_node = fn(ptr, terminate);
-    ptr = terminate + 1;
-
-    return ret_node;
-}
-
-template <typename T>
-T ast::parse_between(lex_cptr& ptr, const parse_fn<T> fn) {
-    if (!ptr->closer)
-        throw std::runtime_error(std::format("Tried to parse between a token with no closer. Token: {}", ptr->span));
-
-    const auto end = ptr->closer.value();
-    const auto node = fn(++ptr, end);
-
-    ptr = end + 1;
-
-    return node;
-}
-
-template <typename T>
-T ast::parse_between(lex_cptr& ptr, const std::string_view exp_val, const parse_fn<T> fn) {
-    return parse_between(ptr = assert_token_val(ptr, exp_val), fn);
-}
-
-template <typename T>
-std::vector<T> ast::parse_split(lex_cptr& ptr, const lex_cptr end, const std::string_view split_val, const parse_fn<T> fn) {
-    std::vector<ast_node> split;
-
-    while (ptr < end) {
-        split.push_back(
-            parse_until(ptr, end, split_val, fn, false)
-        );
-    }
-
-    return split;
-}
-
-template <typename T>
-std::vector<T> ast::capture_contiguous(lex_cptr& ptr, const lex_cptr end, const loop_fn<T> fn) {
-    std::vector<T> nodes;
-
-    while (ptr < end) {
-        if (auto node = fn(ptr)) {
-            nodes.push_back(node.value());
-        } else {
-            break;
-        }
-    }
-
-    return nodes;
-}
-
 void ast::throw_unexpected(const lex::lex_token& token, const std::string_view expected) {
     throw std::runtime_error(std::format("Unexpected token: {}, {}", token.span, expected));
 }
@@ -113,31 +51,6 @@ lex_cptr ast::assert_token(lex_cptr& ptr, const parse_pred pred) {
     return ptr++;
 }
 
-template <typename T>
-std::optional<T> ast::try_parse(lex_cptr &ptr, const lex_cptr end, const parse_fn<T> fn) {
-    const lex_cptr start_cache = ptr;
-
-    try {
-        return fn(ptr, end);
-    } catch (const std::runtime_error&) {
-        ptr = start_cache;
-        return std::nullopt;
-    }
-}
-
-template <typename T>
-T ast::try_parse(lex_cptr &ptr, const lex_cptr end, const parse_fn<T> fn, auto... fn_va) {
-    if (auto node = try_parse(ptr, end, fn)) {
-        return node.value();
-    }
-
-    if constexpr (sizeof...(fn_va) == 0) {
-        throw std::runtime_error("No more functions to try!");
-    }
-
-    return ast::try_parse(ptr, fn_va...);
-}
-
 std::optional<lex_cptr> ast::test_token_val(lex_cptr &ptr, const std::string_view val) {
     if (ptr->span != val)
         return std::nullopt;
@@ -165,17 +78,6 @@ std::optional<lex_cptr> ast::test_token_type(lex_cptr &ptr, const std::span<cons
 
     return ptr++;
 }
-
-template <typename T>
-loop_fn<T> ast::test_token_predicate(parse_pred pred) {
-    return [pred](lex_cptr& ptr) -> std::optional<lex_cptr> {
-        if (!pred(ptr))
-            return std::nullopt;
-
-        return ptr++;
-    };
-}
-
 
 std::optional<lex_cptr> ast::find_by_tok_val(const lex_cptr start, const lex_cptr end, const std::string_view val) {
     auto find = std::find_if(start, end, [val](const lex::lex_token& token) {

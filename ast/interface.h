@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
-#include "declarations.h"
 #include "data/ast_nodes.h"
+#include "declarations.h"
 
 namespace lex {
     struct lex_token;

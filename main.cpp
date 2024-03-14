@@ -2,7 +2,6 @@
 #include <llvm/Support/raw_ostream.h>
 
 #include "ast/interface.h"
-#include "ast/parser_methods/statement.h"
 #include "lexer/lex.h"
 #include "llvm-gen/codegen.h"
 
@@ -32,6 +31,8 @@ int main() {
     const auto ast = ast::parse(tokens);
 
     std::cout << "-------------\n";
+
+    ast.print(0);
 
     //cg_llvm::generate_code(llvm::outs(), ast);
 
