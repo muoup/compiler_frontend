@@ -25,7 +25,7 @@ void code_block::print(const size_t depth) const {
     print_depth(depth);
 
     std::cout << "Code block\n";
-    for (const auto& stmt : expressions)
+    for (const auto& stmt : statements)
         stmt.print(depth + 1);
 }
 
@@ -33,6 +33,9 @@ void function::print(const size_t depth) const {
     print_depth(depth);
 
     std::cout << "Function " << function_name << "\n";
+    for (const auto& param : param_types)
+        param.print(depth + 1);
+
     body.print(depth + 1);
 }
 
@@ -41,25 +44,25 @@ void expression::print(const size_t depth) const {
 
     std::cout << "Expression\n";
     switch (value.index()) {
-        case 0:
+        case METHOD_CALL:
             std::get<method_call>(value).print(depth + 1);
             break;
-        case 1:
+        case ASSIGNMENT:
             std::get<assignment>(value).print(depth + 1);
             break;
-        case 2:
+        case VARIABLE:
             std::get<variable>(value).print(depth + 1);
             break;
-        case 3:
+        case INITIALIZATION:
             std::get<initialization>(value).print(depth + 1);
             break;
-        case 4:
+        case UN_OP:
             std::get<un_op>(value).print(depth + 1);
             break;
-        case 5:
+        case BIN_OP:
             std::get<bin_op>(value).print(depth + 1);
             break;
-        case 6:
+        case LITERAL:
             std::get<literal>(value).print(depth + 1);
             break;
         default:
@@ -81,9 +84,6 @@ void statement::print(const size_t depth) const {
             break;
         case 2:
             std::get<conditional>(value).print(depth + 1);
-            break;
-        case 3:
-            std::get<initialization>(value).print(depth + 1);
             break;
         default:
             std::unreachable();
@@ -174,5 +174,7 @@ void assignment::print(const size_t depth) const {
     if (std::holds_alternative<initialization>(variable))
         std::get<initialization>(variable).print(depth + 1);
     else
-        std::cout << "Variable " << std::get<std::string_view>(variable) << "\n";
+        std::cout << "Variable " << std::get<nodes::variable>(variable).name << "\n";
+
+    value->print(depth + 1);
 }

@@ -5,8 +5,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "../ast/declarations.h"
-
 namespace ast {
     enum class ast_node_type;
 }

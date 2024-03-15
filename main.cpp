@@ -21,7 +21,7 @@ int main() {
             __libc_printf("%d", i);
         }
 
-        i8 main() {
+        i8 main(i8 argc) {
             test();
             return 0;
         }
@@ -34,7 +34,7 @@ int main() {
 
     ast.print(0);
 
-    //cg_llvm::generate_code(llvm::outs(), ast);
+    cg_llvm::generate_code(llvm::outs(), ast);
 
     return 0;
 }

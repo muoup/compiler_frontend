@@ -18,7 +18,7 @@ namespace ast::nodes {
     };
 
     struct code_block {
-        std::vector<statement> expressions;
+        std::vector<statement> statements;
 
         void print(size_t depth) const;
     };
@@ -26,7 +26,7 @@ namespace ast::nodes {
     struct function {
         value_type return_type;
         std::string_view function_name;
-        std::vector<value_type> param_types;
+        std::vector<initialization> param_types;
 
         code_block body;
 
@@ -55,6 +55,7 @@ namespace ast::nodes {
 
     struct bin_op {
         bin_op_type type;
+        bool assignment;
         std::unique_ptr<expression> left;
         std::unique_ptr<expression> right;
 
@@ -68,19 +69,36 @@ namespace ast::nodes {
         void print(size_t depth) const;
     };
 
+    enum literal_type {
+        UINT, INT,
+        DOUBLE,
+        CHAR,
+        STRING
+    };
     struct literal {
         std::variant<unsigned int, int, double, char, std::string_view> value;
 
         void print(size_t depth) const;
     };
 
+    enum assignment_type {
+        ASSIGN_INITIALIZATION,
+        ASSIGN_VARIABLE
+    };
     struct assignment {
-        std::variant<initialization, std::string_view> variable;
-        std::string_view value;
+        std::variant<initialization, variable> variable;
+        std::unique_ptr<expression> value;
+        bin_op_type operation;
 
         void print(size_t depth) const;
     };
 
+    enum expression_type {
+        METHOD_CALL,
+        ASSIGNMENT, VARIABLE, INITIALIZATION,
+        UN_OP, BIN_OP,
+        LITERAL
+    };
     struct expression {
         std::variant<method_call, assignment, variable,
                     initialization, un_op, bin_op, literal> value;
@@ -107,8 +125,13 @@ namespace ast::nodes {
         void print(size_t depth) const;
     };
 
+    enum statement_type {
+        RETURN,
+        EXPRESSION,
+        CONDITIONAL,
+    };
     struct statement {
-        std::variant<return_op, expression, conditional, initialization> value;
+        std::variant<return_op, expression, conditional> value;
 
         void print(size_t depth) const;
     };

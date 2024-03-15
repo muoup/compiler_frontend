@@ -5,8 +5,9 @@ namespace llvm {
     class LLVMContext;
 }
 
-namespace ast {
-    struct ast_node;
+namespace ast::nodes {
+    struct value_type;
+    struct initialization;
 }
 
 #define AS_TYPE_GEN(x) reinterpret_cast<type_getter>(x)
@@ -14,5 +15,5 @@ namespace ast {
 using type_getter = llvm::Type *(*)(llvm::LLVMContext &);
 
 namespace cg_llvm {
-    llvm::Type* get_llvm_type(const ast::ast_node &node, llvm::LLVMContext &context);
+    llvm::Type* get_llvm_type(const ast::nodes::value_type &val_type, llvm::LLVMContext &context);
 }

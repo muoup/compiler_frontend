@@ -1,52 +1,41 @@
 #include "operators.h"
 
 #include <stdexcept>
-#include <llvm/IR/InstrTypes.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Type.h>
 
 #include "codegen.h"
 #include "../ast/declarations.h"
+#include "../ast/data/ast_nodes.h"
 
 using namespace cg_llvm;
 
-const std::unordered_map<std::string_view, llvm::Instruction::BinaryOps> i_binop_map {
-    { "+", llvm::Instruction::BinaryOps::Add },
-    { "-", llvm::Instruction::BinaryOps::Sub },
-    { "*", llvm::Instruction::BinaryOps::Mul },
-    { "/", llvm::Instruction::BinaryOps::SDiv },
-    { "%", llvm::Instruction::BinaryOps::SRem },
-    { "&", llvm::Instruction::BinaryOps::And },
-    { "|", llvm::Instruction::BinaryOps::Or },
-    { "^", llvm::Instruction::BinaryOps::Xor },
-    { "<<", llvm::Instruction::BinaryOps::Shl },
-    { ">>", llvm::Instruction::BinaryOps::AShr }
-};
-
-const std::unordered_map<std::string_view, llvm::Instruction::BinaryOps> f_binop_map {
-    { "+", llvm::Instruction::BinaryOps::FAdd },
-    { "-", llvm::Instruction::BinaryOps::FSub },
-    { "*", llvm::Instruction::BinaryOps::FMul },
-    { "/", llvm::Instruction::BinaryOps::FDiv },
-    { "%", llvm::Instruction::BinaryOps::FRem },
-    { "&", llvm::Instruction::BinaryOps::And },
-    { "|", llvm::Instruction::BinaryOps::Or },
-    { "^", llvm::Instruction::BinaryOps::Xor },
-    { "<<", llvm::Instruction::BinaryOps::Shl },
-    { ">>", llvm::Instruction::BinaryOps::AShr }
+const std::unordered_map<ast::nodes::bin_op_type, llvm::Instruction::BinaryOps> binop_map {
+    { ast::nodes::bin_op_type::add, llvm::Instruction::BinaryOps::Add },
+    { ast::nodes::bin_op_type::sub, llvm::Instruction::BinaryOps::Sub },
+    { ast::nodes::bin_op_type::mul, llvm::Instruction::BinaryOps::Mul },
+    { ast::nodes::bin_op_type::div, llvm::Instruction::BinaryOps::SDiv },
+    { ast::nodes::bin_op_type::mod, llvm::Instruction::BinaryOps::SRem },
+    { ast::nodes::bin_op_type::and_, llvm::Instruction::BinaryOps::And },
+    { ast::nodes::bin_op_type::or_, llvm::Instruction::BinaryOps::Or },
+    { ast::nodes::bin_op_type::xor_, llvm::Instruction::BinaryOps::Xor },
+    { ast::nodes::bin_op_type::shl, llvm::Instruction::BinaryOps::Shl },
+    { ast::nodes::bin_op_type::shr, llvm::Instruction::BinaryOps::AShr },
 };
 
 balance_result cg_llvm::balance_sides(llvm::Value* lhs, llvm::Value* rhs, const scope_data& data) {
-    bool is_l_int = lhs->getType()->isIntegerTy();
-    bool is_r_int = rhs->getType()->isIntegerTy();
+    const bool is_l_int = lhs->getType()->isIntegerTy();
+    const bool is_r_int = rhs->getType()->isIntegerTy();
 
     // If both are integers, we can just return them as is.
     if (is_l_int == is_r_int)
-        return { lhs, rhs };
+        return balance_result {
+            lhs, rhs
+        };
 
     return balance_result {
-        .lhs = (is_l_int) ? data.builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(data.context)) : lhs,
-        .rhs = (is_r_int) ? rhs : data.builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(data.context)),
+        .lhs = is_l_int ? data.builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(data.context)) : lhs,
+        .rhs = is_r_int ? rhs : data.builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(data.context)),
     };
 }
 
@@ -71,36 +60,71 @@ llvm::Value * cg_llvm::attempt_cast(llvm::Value *val, llvm::Type *to_type, const
     throw std::runtime_error("Invalid cast.");
 }
 
-llvm::Value* cg_llvm::generate_binop(const ast::ast_node &node, scope_data &data) {
-    if (node.type != ast::ast_node_type::BIN_OP)
-        throw std::runtime_error("Invalid node type for binary operation generation.");
-    if (node.data == "=")
-        return generate_assignment(node, data);
-
+llvm::Value* cg_llvm::generate_binop(const ast::nodes::bin_op &node, scope_data &data) {
     const auto [lhs, rhs, is_int] = balance_sides(
-        generate_expression(node.children[0], data),
-        generate_expression(node.children[1], data),
+        generate_expression(*node.left, data),
+        generate_expression(*node.right, data),
         data
     );
-    const auto& binop_map = is_int ? i_binop_map : f_binop_map;
-
-    if (!binop_map.contains(node.data))
-        throw std::runtime_error("Invalid binary operator.");
-
-    return data.builder.CreateBinOp(binop_map.at(node.data), lhs, rhs);
+    const auto binop_type =
+        static_cast<llvm::Instruction::BinaryOps>(binop_map.at(node.type) + is_int);
+    return data.builder.CreateBinOp(binop_type, lhs, rhs);
 }
 
-llvm::Value* cg_llvm::generate_assignment(const ast::ast_node& node, scope_data& data) {
-    if (node.type != ast::ast_node_type::BIN_OP)
-        throw std::runtime_error("Invalid node type for assignment generation.");
+llvm::Value* cg_llvm::generate_unop(const ast::nodes::un_op &un_op, scope_data &data) {
+    auto *val = generate_expression(*un_op.value, data);
+    const auto &expr = *un_op.value;
 
-    const auto& lh_type = node.children[0].type;
+    switch (un_op.type) {
+        using namespace ast::nodes;
+        case un_op_type::l_not:
+            return data.builder.CreateNot(val);
+        case un_op_type::dereference:
+            if (!val->getType()->isPointerTy())
+                throw std::runtime_error("Dereferencing non-pointer type");
 
-    if (lh_type != ast::ast_node_type::INITIALIZATION && lh_type != ast::ast_node_type::VARIABLE)
-        throw std::runtime_error("Invalid left-hand side type for assignment.");
+            return data.builder.CreateLoad(val->getType(), val);
+        case un_op_type::address_of:
+            if (expr.value.index() != VARIABLE)
+                throw std::runtime_error("Cannot take address of non-variable");
 
-    auto *lhs = static_cast<llvm::AllocaInst*>(generate_expression(node.children[0], data));
-    auto *rhs = generate_expression(node.children[1], data);
+            return data.get_variable(std::get<variable>(expr.value).name);
+        case un_op_type::bit_not:
+            if (!val->getType()->isIntegerTy())
+                throw std::runtime_error("Bitwise not on non-integer type");
+
+            return data.builder.CreateBinOp(
+                llvm::Instruction::BinaryOps::Xor,
+                val, llvm::ConstantInt::get(val->getType(), -1)
+            );
+        case un_op_type::negate:
+            if (val->getType()->isIntegerTy())
+                return data.builder.CreateNeg(val);
+            else if (val->getType()->isFloatingPointTy())
+                return data.builder.CreateFNeg(val);
+            else
+                throw std::runtime_error("Negation on non-numeric type");
+        default:
+            throw std::runtime_error("Invalid unary operator");
+    }
+}
+
+llvm::Value* cg_llvm::generate_assignment(const ast::nodes::assignment& node, scope_data& data) {
+    llvm::Value* lhs;
+
+    switch (node.variable.index()) {
+        using namespace ast::nodes;
+        case ASSIGN_INITIALIZATION:
+            lhs = generate_initialization(std::get<initialization>(node.variable), data);
+            break;
+        case ASSIGN_VARIABLE:
+            lhs = data.get_variable(std::get<variable>(node.variable).name);
+            break;
+        default:
+            throw std::runtime_error("Invalid assignment type");
+    }
+
+    auto *rhs = generate_expression(*node.value, data);
 
     // Assign the value to the variable.
     return data.builder.CreateStore(rhs, lhs);

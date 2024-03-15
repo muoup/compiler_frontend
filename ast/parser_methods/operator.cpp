@@ -2,8 +2,8 @@
 
 namespace ast::pm {
     const std::unordered_map<nodes::bin_op_type, uint16_t> binop_prec {
-        {nodes::bin_op_type::lor, 2 },
-        {nodes::bin_op_type::land, 3 },
+        {nodes::bin_op_type::l_or, 2 },
+        {nodes::bin_op_type::l_and, 3 },
         {nodes::bin_op_type::or_, 4 },
         {nodes::bin_op_type::xor_, 5 },
         {nodes::bin_op_type::and_, 6 },
@@ -22,15 +22,15 @@ namespace ast::pm {
         { nodes::bin_op_type::mul, 20 },
         { nodes::bin_op_type::div, 20 },
         { nodes::bin_op_type::mod, 20 },
-        { nodes::bin_op_type::sshl, 20 },
-        { nodes::bin_op_type::sshr, 20 },
+        { nodes::bin_op_type::shl, 20 },
+        { nodes::bin_op_type::shr, 20 },
 
         { nodes::bin_op_type::pow, 30 }
     };
 
     const std::unordered_map<std::string_view, nodes::bin_op_type> binop_type_map {
-        {"||", nodes::bin_op_type::lor},
-        {"&&", nodes::bin_op_type::land},
+        {"||", nodes::bin_op_type::l_or},
+        {"&&", nodes::bin_op_type::l_and},
         {"|", nodes::bin_op_type::or_},
         {"^", nodes::bin_op_type::xor_},
         {"&", nodes::bin_op_type::and_},
@@ -48,30 +48,18 @@ namespace ast::pm {
         {"*", nodes::bin_op_type::mul},
         {"/", nodes::bin_op_type::div},
         {"%", nodes::bin_op_type::mod},
-        {"<<", nodes::bin_op_type::sshl},
-        {">>", nodes::bin_op_type::sshr},
+        {"<<", nodes::bin_op_type::shl},
+        {">>", nodes::bin_op_type::shr},
 
         {"**", nodes::bin_op_type::pow},
-
-        {"=", nodes::bin_op_type::assign},
-        {"+=", nodes::bin_op_type::assign_add},
-        {"-=", nodes::bin_op_type::assign_sub},
-        {"*=", nodes::bin_op_type::assign_mul},
-        {"/=", nodes::bin_op_type::assign_div},
-        {"%=", nodes::bin_op_type::assign_mod},
-        {"<<=", nodes::bin_op_type::assign_shift_left},
-        {">>=", nodes::bin_op_type::assign_shift_right},
-        {"&=", nodes::bin_op_type::assign_and},
-        {"|=", nodes::bin_op_type::assign_or},
-        {"^=", nodes::bin_op_type::assign_xor}
     };
 
     const std::unordered_map<std::string_view, nodes::un_op_type> unop_type_map {
         {"*", nodes::un_op_type::dereference},
         {"&", nodes::un_op_type::address_of},
-        {"!", nodes::un_op_type::not_},
+        {"!", nodes::un_op_type::l_not},
         {"-", nodes::un_op_type::negate},
-        {"~", nodes::un_op_type::bitwise_not}
+        {"~", nodes::un_op_type::bit_not}
     };
 
     nodes::un_op_type get_unop(const std::string_view op) {
@@ -84,7 +72,10 @@ namespace ast::pm {
     }
 
     nodes::bin_op_type get_binop(const std::string_view op) {
-        const auto find = binop_type_map.find(op);
+        const auto op_slice = op.ends_with("=") ?
+            op.substr(0, op.size() - 1) : op;
+
+        const auto find = binop_type_map.find(op_slice);
 
         if (find == binop_type_map.end())
             return nodes::bin_op_type::invalid;

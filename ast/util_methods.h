@@ -72,7 +72,7 @@ namespace ast {
     std::vector<T> parse_split(lex_cptr& ptr, const lex_cptr end, const std::string_view split_val, const parse_fn<T> fn) {
         std::vector<T> split;
 
-        ++ptr;
+        // ++ptr;
 
         while (ptr < end) {
             split.emplace_back(

@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <string_view>
 #include <variant>
 
@@ -8,29 +9,36 @@ namespace ast::nodes {
         u8, u16, u32, u64,
         f32, f64,
 
+        char_, bool_, void_,
+
         infer_type
     };
 
     enum class bin_op_type {
         invalid,
 
-        add, sub, mul, div, mod,
-        eq, neq, lt, gt, lte, gte,
-        land, lor, and_, or_, not_, xor_, sshl, sshr, pow,
+        add, sub, mul, div, mod, pow,
+        and_, or_, xor_, shl, shr,
+        l_and, l_or, l_not, l_xor,
 
-        assign,
-        assign_add, assign_sub, assign_mul, assign_div, assign_mod, assign_pow,
-        assign_and, assign_or, assign_xor, assign_shift_left, assign_shift_right,
+        eq, neq, lt, gt, lte, gte,
     };
 
     enum class un_op_type {
         invalid,
 
-        dereference, address_of, not_, negate, bitwise_not
+        dereference, address_of, bit_not, l_not, negate
+    };
+
+    enum var_type_category {
+        INTRINSIC,
+        NON_INTRINSIC
     };
 
     struct value_type {
         std::variant<intrinsic_types, std::string_view> type;
         bool is_const, is_pointer;
     };
+
+    std::optional<intrinsic_types> get_intrinsic_type(std::string_view type);
 }

@@ -78,10 +78,15 @@ nodes::un_op pm::parse_unop(lex_cptr &ptr, const lex_cptr end) {
 
 nodes::bin_op pm::parse_binop(lex_cptr &ptr, const lex_cptr end) {
     const auto operator_type = assert_token_type(ptr, lex::lex_type::SYMBOL)->span;
+    const auto op_slice = operator_type.ends_with("=") ?
+        operator_type.substr(0, operator_type.size() - 1) : operator_type;
 
-    return { nodes::bin_op {
-        get_binop(operator_type),
-    } };
+    return nodes::bin_op {
+        nodes::bin_op {
+        get_binop(op_slice),
+        operator_type.ends_with("="),
+        }
+    };
 }
 
 nodes::expression pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
@@ -101,8 +106,41 @@ nodes::expression pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
         }).value();
     };
 
-    const auto combine_back = [&expr_stack, &binop_stack] {
+    const auto parse_assignment = [&expr_stack, &binop_stack] {
+        auto right = std::make_unique<nodes::expression>(std::move(expr_stack.top()));
+        expr_stack.pop();
+        auto left = std::move(expr_stack.top());
+        expr_stack.pop();
+        auto binop_type = binop_stack.top().type;
+        binop_stack.pop();
+
+        switch (left.value.index()) {
+            case nodes::expression_type::VARIABLE:
+                expr_stack.emplace(nodes::assignment {
+                    std::get<nodes::variable>(left.value),
+                    std::move(right),
+                    binop_type
+                });
+                break;
+            case nodes::expression_type::INITIALIZATION:
+                expr_stack.emplace(nodes::assignment {
+                    std::get<nodes::initialization>(left.value),
+                    std::move(right),
+                    binop_type
+                });
+                break;
+            default:
+                throw std::runtime_error("Invalid assignment target");
+        }
+    };
+
+    const auto combine_back = [&expr_stack, &binop_stack, &parse_assignment] {
         auto& top_op = binop_stack.top();
+
+        if (top_op.assignment) {
+            parse_assignment();
+            return;
+        }
 
         top_op.right = std::make_unique<nodes::expression>(std::move(expr_stack.top()));
         expr_stack.pop();
@@ -138,7 +176,7 @@ nodes::expression pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
 
 nodes::method_call pm::parse_method_call(lex_cptr &ptr, const lex_cptr end) {
     const auto method_name = ptr++->span;
-    const auto param_end = ptr->closer.value();
+    const auto param_end = ptr++->closer.value();
 
     nodes::method_call method_call {
         method_name,
