@@ -27,7 +27,11 @@ nodes::function pm::parse_method(lex_cptr &ptr, const lex_cptr end) {
 
     auto &code_expressions = function.body.statements;
     if (code_expressions.empty() || !std::holds_alternative<nodes::return_op>(code_expressions.back().value))
-        code_expressions.emplace_back(nodes::return_op{});
+        code_expressions.emplace_back(nodes::return_op{
+            function_name == "main" ?
+                std::make_optional<nodes::expression>(nodes::literal{ 0 }) :
+                std::nullopt
+        });
 
     return function;
 }

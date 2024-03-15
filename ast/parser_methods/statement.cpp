@@ -208,13 +208,14 @@ std::optional<nodes::expression> pm::parse_value(lex_cptr &ptr, const lex_cptr e
 }
 
 std::optional<nodes::literal> pm::parse_literal(lex_cptr &ptr, lex_cptr end) {
+    int i = 0;
+    double d = 0;
+
     switch (ptr->type) {
         case lex::lex_type::INT_LITERAL:
-            int i;
             std::from_chars(ptr->span.data(), ptr->span.data() + ptr++->span.size(), i);
             return nodes::literal { i };
         case lex::lex_type::FLOAT_LITERAL:
-            double d;
             std::from_chars(ptr->span.data(), ptr->span.data() + ptr++->span.size(), d);
             return nodes::literal { d };
         case lex::lex_type::STRING_LITERAL:
