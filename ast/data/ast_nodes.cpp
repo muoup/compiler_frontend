@@ -50,6 +50,9 @@ void expression::print(const size_t depth) const {
         case ASSIGNMENT:
             std::get<assignment>(value).print(depth + 1);
             break;
+        case CONST_ASSIGNMENT:
+            std::get<const_assignment>(value).print(depth + 1);
+            break;
         case VARIABLE:
             std::get<variable>(value).print(depth + 1);
             break;
@@ -110,6 +113,14 @@ void initialization::print(const size_t depth) const {
 
     std::cout << "Initialization\n";
     var.print(depth + 1);
+}
+
+void const_assignment::print(const size_t depth) const {
+    print_depth(depth);
+
+    std::cout << "Const Assignment\n";
+    variable.print(depth + 1);
+    value->print(depth + 1);
 }
 
 void conditional::print(const size_t depth) const {

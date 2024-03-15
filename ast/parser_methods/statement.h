@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../data/ast_nodes.h"
+#include "../data/node_defs.h"
 #include "../declarations.h"
 
 namespace ast::pm {
@@ -13,8 +13,6 @@ namespace ast::pm {
     nodes::un_op parse_unop(lex_cptr &ptr, lex_cptr end);
 
     nodes::bin_op parse_binop(lex_cptr &ptr, lex_cptr end);
-
-    nodes::expression parse_expression(lex_cptr &ptr, lex_cptr end);
 
     nodes::method_call parse_method_call(lex_cptr &ptr, lex_cptr end);
 

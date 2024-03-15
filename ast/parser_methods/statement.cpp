@@ -4,6 +4,7 @@
 #include <stack>
 #include <stdexcept>
 
+#include "expression.h"
 #include "operator.h"
 #include "program.h"
 #include "../declarations.h"
@@ -89,91 +90,6 @@ nodes::bin_op pm::parse_binop(lex_cptr &ptr, const lex_cptr end) {
     };
 }
 
-nodes::expression pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
-    std::stack<nodes::expression> expr_stack;
-    std::stack<nodes::bin_op> binop_stack;
-
-    const auto gen_expr = [&ptr, end] {
-        return parse_value(ptr, end).or_else([&ptr, end] {
-            if (ptr >= end - 1)
-                throw std::runtime_error("Expected value");
-
-            return std::optional {
-                nodes::expression {
-                parse_unop(ptr, end)
-                }
-            };
-        }).value();
-    };
-
-    const auto parse_assignment = [&expr_stack, &binop_stack] {
-        auto right = std::make_unique<nodes::expression>(std::move(expr_stack.top()));
-        expr_stack.pop();
-        auto left = std::move(expr_stack.top());
-        expr_stack.pop();
-        auto binop_type = binop_stack.top().type;
-        binop_stack.pop();
-
-        switch (left.value.index()) {
-            case nodes::expression_type::VARIABLE:
-                expr_stack.emplace(nodes::assignment {
-                    std::get<nodes::variable>(left.value),
-                    std::move(right),
-                    binop_type
-                });
-                break;
-            case nodes::expression_type::INITIALIZATION:
-                expr_stack.emplace(nodes::assignment {
-                    std::get<nodes::initialization>(left.value),
-                    std::move(right),
-                    binop_type
-                });
-                break;
-            default:
-                throw std::runtime_error("Invalid assignment target");
-        }
-    };
-
-    const auto combine_back = [&expr_stack, &binop_stack, &parse_assignment] {
-        auto& top_op = binop_stack.top();
-
-        if (top_op.assignment) {
-            parse_assignment();
-            return;
-        }
-
-        top_op.right = std::make_unique<nodes::expression>(std::move(expr_stack.top()));
-        expr_stack.pop();
-
-        top_op.left = std::make_unique<nodes::expression>(std::move(expr_stack.top()));
-        expr_stack.pop();
-
-        expr_stack.emplace(std::move(top_op));
-        binop_stack.pop();
-    };
-
-    expr_stack.emplace(gen_expr());
-
-    while (ptr < end) {
-        auto r_op = parse_binop(ptr, end);
-
-        while (!binop_stack.empty() && get_prec(r_op) <= get_prec(binop_stack.top()))
-            combine_back();
-
-        expr_stack.emplace(gen_expr());
-        binop_stack.emplace(std::move(r_op));
-    }
-
-    while (!binop_stack.empty())
-        combine_back();
-
-    // try_optimize(expr_stack.top());
-
-    return nodes::expression {
-        std::move(expr_stack.top())
-    };
-}
-
 nodes::method_call pm::parse_method_call(lex_cptr &ptr, const lex_cptr end) {
     const auto method_name = ptr++->span;
     const auto param_end = ptr++->closer.value();
@@ -213,10 +129,12 @@ std::optional<nodes::literal> pm::parse_literal(lex_cptr &ptr, lex_cptr end) {
 
     switch (ptr->type) {
         case lex::lex_type::INT_LITERAL:
-            std::from_chars(ptr->span.data(), ptr->span.data() + ptr++->span.size(), i);
+            std::from_chars(ptr->span.data(), ptr->span.data() + ptr->span.size(), i);
+            ++ptr;
             return nodes::literal { i };
         case lex::lex_type::FLOAT_LITERAL:
-            std::from_chars(ptr->span.data(), ptr->span.data() + ptr++->span.size(), d);
+            std::from_chars(ptr->span.data(), ptr->span.data() + ptr->span.size(), d);
+            ++ptr;
             return nodes::literal { d };
         case lex::lex_type::STRING_LITERAL:
             return nodes::literal { ptr++->span };

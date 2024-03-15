@@ -93,14 +93,22 @@ namespace ast::nodes {
         void print(size_t depth) const;
     };
 
+    struct const_assignment {
+        initialization variable;
+        std::unique_ptr<expression> value;
+
+        void print(size_t depth) const;
+    };
+
     enum expression_type {
         METHOD_CALL,
-        ASSIGNMENT, VARIABLE, INITIALIZATION,
+        CONST_ASSIGNMENT, ASSIGNMENT,
+        VARIABLE, INITIALIZATION,
         UN_OP, BIN_OP,
         LITERAL
     };
     struct expression {
-        std::variant<method_call, assignment, variable,
+        std::variant<method_call, const_assignment, assignment, variable,
                     initialization, un_op, bin_op, literal> value;
 
         void print(size_t depth) const;

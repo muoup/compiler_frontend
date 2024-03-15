@@ -20,18 +20,17 @@ static llvm::LLVMContext context;
 
 using var_table = std::unordered_map<std::string_view, llvm::Type*>;
 
-llvm::AllocaInst *scope_data::add_variable(const std::string_view name, llvm::Type *type) const {
+const scope_variable &scope_data::add_variable(const std::string_view name, llvm::Type *type, const bool const_) const {
     if (tables.back()->contains(name))
         throw std::runtime_error("Variable already exists in symbol table.");
 
-    auto* alloca = builder.CreateAlloca(type);
-    alloca->setName(name);
+    auto* var_alloca = builder.CreateAlloca(type, nullptr, name);
 
-    tables.back()->emplace(name, alloca);
+    tables.back()->emplace(name, scope_variable { var_alloca, const_ });
     return get_variable(name);
 }
 
-llvm::AllocaInst *scope_data::get_variable(const std::string_view name) const {
+const scope_variable &scope_data::get_variable(const std::string_view name) const {
     for (auto it = tables.rbegin(); it != tables.rend(); ++it) {
         if ((*it)->contains(name))
             return (*it)->at(name);
@@ -71,7 +70,23 @@ llvm::Value* cg_llvm::generate_literal(const ast::nodes::literal& node, const sc
 }
 
 llvm::Value *cg_llvm::generate_initialization(const ast::nodes::initialization &init, scope_data &scope) {
-    return scope.add_variable(init.var.name, get_llvm_type(init.type, context));
+    const auto &alloc = scope.add_variable(init.var.name, get_llvm_type(init.type, context));
+
+    return std::get<llvm::AllocaInst*>(alloc.var_allocation);
+}
+
+llvm::Value *cg_llvm::generate_const_init(const ast::nodes::const_assignment &init, scope_data &scope) {
+    const auto& value = generate_expression(*init.value, scope);
+
+    // if (auto *const_data = llvm::dyn_cast<llvm::Constant>(value)) {
+    //     scope.tables.front()->emplace(
+    //         init.variable.var.name,
+    //         scope_variable { const_data, true }
+    //     );
+    // }
+
+    auto *val = generate_initialization(init.variable, scope);
+    return scope.builder.CreateStore(value, val);
 }
 
 llvm::Value* cg_llvm::generate_method_call(const ast::nodes::method_call &method_call, scope_data &scope) {
@@ -94,9 +109,20 @@ llvm::Value* cg_llvm::generate_method_call(const ast::nodes::method_call &method
     return scope.builder.CreateCall(func, args);
 }
 
-llvm::Value* cg_llvm::generate_variable(const ast::nodes::variable& var, const scope_data& scope) {
+llvm::Value* cg_llvm::generate_variable(const ast::nodes::variable& var, scope_data& scope) {
     const auto scope_var = scope.get_variable(var.name);
-    return scope.builder.CreateLoad(scope_var->getType(), scope_var, var.name);
+
+    if (scope_var.var_allocation.index() == 0) {
+        return std::get<llvm::Constant*>(scope_var.var_allocation);
+    }
+
+    if (scope_var.var_allocation.index() == 1) {
+        auto *alloca_ = std::get<llvm::AllocaInst*>(scope_var.var_allocation);
+
+        return scope.builder.CreateLoad(alloca_->getAllocatedType(), alloca_);
+    }
+
+    throw std::runtime_error("Invalid variable allocation type.");
 }
 
 llvm::Value* cg_llvm::generate_expression(const ast::nodes::expression& node, scope_data& scope) {
@@ -113,6 +139,9 @@ llvm::Value* cg_llvm::generate_expression(const ast::nodes::expression& node, sc
 
         case INITIALIZATION:
             return generate_initialization(std::get<initialization>(node.value), scope);
+
+        case CONST_ASSIGNMENT:
+            return generate_const_init(std::get<const_assignment>(node.value), scope);
 
         case UN_OP:
             return generate_unop(std::get<un_op>(node.value), scope);

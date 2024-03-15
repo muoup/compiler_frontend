@@ -21,7 +21,7 @@ int main() {
             __libc_printf("%d", i);
         }
 
-        i8 main(i8 argc) {
+        i8 main() {
             test();
             return 0;
         }

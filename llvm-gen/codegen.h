@@ -1,8 +1,13 @@
 #pragma once
 #include <memory>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 #include <llvm/IR/IRBuilder.h>
+
+namespace ast::nodes {
+    struct const_assignment;
+}
 
 namespace llvm {
     class Type;
@@ -29,7 +34,12 @@ namespace ast::nodes {
 }
 
 namespace cg_llvm {
-    using var_table = std::unordered_map<std::string_view, llvm::AllocaInst*>;
+    struct scope_variable {
+        std::variant<llvm::Constant*, llvm::AllocaInst*> var_allocation;
+        bool is_const;
+    };
+
+    using var_table = std::unordered_map<std::string_view, scope_variable>;
 
     struct scope_data {
         llvm::LLVMContext &context;
@@ -39,15 +49,16 @@ namespace cg_llvm {
 
         llvm::Function* current_function = nullptr;
 
-        llvm::AllocaInst *add_variable(std::string_view name, llvm::Type *type) const;
-        llvm::AllocaInst *get_variable(std::string_view name) const;
+        const scope_variable &add_variable(std::string_view name, llvm::Type *type, bool const_ = false) const;
+        const scope_variable &get_variable(std::string_view name) const;
     };
 
     void generate_code(llvm::raw_ostream &out, const ast::nodes::root & root);
 
     llvm::Value* generate_literal(const ast::nodes::literal &node, const scope_data& scope);
     llvm::Value* generate_method_call(const ast::nodes::method_call &method_call, scope_data& scope);
-    llvm::Value* generate_variable(const ast::nodes::variable &var, const scope_data& scope);
+    llvm::Value* generate_const_init(const ast::nodes::const_assignment &init, scope_data& scope);
+    llvm::Value* generate_variable(const ast::nodes::variable &var, scope_data& scope);
     llvm::Value* generate_expression(const ast::nodes::expression &node, scope_data& scope);
     llvm::Value* generate_binop(const ast::nodes::bin_op &node, scope_data &data);
     llvm::Value* generate_statement(const ast::nodes::statement &stmt, scope_data& data);

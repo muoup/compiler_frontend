@@ -1,5 +1,6 @@
 #include "program.h"
 
+#include "expression.h"
 #include "../util_methods.h"
 #include "../../lexer/lex.h"
 #include "statement.h"
@@ -46,7 +47,7 @@ nodes::code_block pm::parse_body(lex_cptr &ptr, lex_cptr end) {
 }
 
 nodes::value_type pm::parse_value_type(lex_cptr &ptr, const lex_cptr) {
-    const auto is_const = test_token_val(ptr, "mut").has_value();
+    const auto is_const = !test_token_val(ptr, "mut").has_value();
     const auto type = assert_token(ptr, is_variable_identifier)->span;
     const auto is_pointer = test_token_val(ptr, "*").has_value();
 
@@ -55,14 +56,14 @@ nodes::value_type pm::parse_value_type(lex_cptr &ptr, const lex_cptr) {
     if (!intrin) {
         return nodes::value_type {
             type,
+            is_const,
             is_pointer,
-            is_const
         };
     } else {
         return nodes::value_type {
             *intrin,
+            is_const,
             is_pointer,
-            is_const
         };
     }
 }

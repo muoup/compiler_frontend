@@ -88,7 +88,7 @@ llvm::Value* cg_llvm::generate_unop(const ast::nodes::un_op &un_op, scope_data &
             if (expr.value.index() != VARIABLE)
                 throw std::runtime_error("Cannot take address of non-variable");
 
-            return data.get_variable(std::get<variable>(expr.value).name);
+            return generate_variable(std::get<variable>(expr.value), data);
         case un_op_type::bit_not:
             if (!val->getType()->isIntegerTy())
                 throw std::runtime_error("Bitwise not on non-integer type");
@@ -118,7 +118,7 @@ llvm::Value* cg_llvm::generate_assignment(const ast::nodes::assignment& node, sc
             lhs = generate_initialization(std::get<initialization>(node.variable), data);
             break;
         case ASSIGN_VARIABLE:
-            lhs = data.get_variable(std::get<variable>(node.variable).name);
+            lhs = generate_variable(std::get<variable>(node.variable), data);
             break;
         default:
             throw std::runtime_error("Invalid assignment type");
