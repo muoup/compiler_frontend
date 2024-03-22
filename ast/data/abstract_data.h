@@ -18,7 +18,7 @@ namespace ast::nodes {
         invalid,
 
         add, sub, mul, div, mod, pow,
-        and_, or_, xor_, shl, shr,
+        b_and, b_or, b_xor, shl, shr,
         l_and, l_or, l_not, l_xor,
 
         eq, neq, lt, gt, lte, gte,
@@ -27,7 +27,7 @@ namespace ast::nodes {
     enum class un_op_type {
         invalid,
 
-        dereference, address_of, bit_not, l_not, negate
+        deref, addr_of, bit_not, log_not, negate
     };
 
     enum var_type_category {

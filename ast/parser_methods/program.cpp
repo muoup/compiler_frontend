@@ -7,7 +7,7 @@
 
 using namespace ast;
 
-std::vector<nodes::initialization> pm::parse_method_params(lex_cptr &ptr, const lex_cptr end) {
+std::vector<nodes::type_instance> pm::parse_method_params(lex_cptr &ptr, const lex_cptr end) {
     return parse_split(ptr, end, ",", parse_initialization);
 }
 

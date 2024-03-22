@@ -47,17 +47,17 @@ void expression::print(const size_t depth) const {
         case METHOD_CALL:
             std::get<method_call>(value).print(depth + 1);
             break;
-        case ASSIGNMENT:
-            std::get<assignment>(value).print(depth + 1);
-            break;
-        case CONST_ASSIGNMENT:
-            std::get<const_assignment>(value).print(depth + 1);
-            break;
-        case VARIABLE:
-            std::get<variable>(value).print(depth + 1);
+        case VAR_MODIFICATION:
+            std::get<var_modification>(value).print(depth + 1);
             break;
         case INITIALIZATION:
             std::get<initialization>(value).print(depth + 1);
+            break;
+        case VAR_REF:
+            std::get<var_ref>(value).print(depth + 1);
+            break;
+        case TYPE_INSTANCE:
+            std::get<type_instance>(value).print(depth + 1);
             break;
         case UN_OP:
             std::get<un_op>(value).print(depth + 1);
@@ -102,25 +102,25 @@ void return_op::print(const size_t depth) const {
         value->print(depth + 1);
 }
 
-void variable::print(const size_t depth) const {
+void var_ref::print(const size_t depth) const {
     print_depth(depth);
 
-    std::cout << "Variable " << name << "\n";
+    std::cout << "Variable Reference: " << name << "\n";
+}
+
+void type_instance::print(const size_t depth) const {
+    print_depth(depth);
+
+    std::cout << "Initialization: " << var_name << "\n";
 }
 
 void initialization::print(const size_t depth) const {
     print_depth(depth);
 
-    std::cout << "Initialization\n";
-    var.print(depth + 1);
-}
-
-void const_assignment::print(const size_t depth) const {
-    print_depth(depth);
-
-    std::cout << "Const Assignment\n";
+    std::cout << "Variable Initialization\n";
     variable.print(depth + 1);
-    value->print(depth + 1);
+    if (value)
+        (*value)->print(depth + 1);
 }
 
 void conditional::print(const size_t depth) const {
@@ -159,33 +159,29 @@ void literal::print(const size_t depth) const {
 
     switch (value.index()) {
         case 0:
-            std::cout << "[UINT] Literal " << std::get<unsigned int>(value) << "\n";
+            std::cout << "Unsigned Int Literal " << std::get<unsigned int>(value) << "\n";
             break;
         case 1:
-            std::cout << "[INT] Literal " << std::get<int>(value) << "\n";
+            std::cout << "Int Literal " << std::get<int>(value) << "\n";
             break;
         case 2:
-            std::cout << "[DOUBLE] Literal " << std::get<double>(value) << "\n";
+            std::cout << "Double Literal " << std::get<double>(value) << "\n";
             break;
         case 3:
-            std::cout << "[CHAR] Literal " << std::get<char>(value) << "\n";
+            std::cout << "Char Literal " << std::get<char>(value) << "\n";
             break;
         case 4:
-            std::cout << "[STRING] Literal " << std::get<std::string_view>(value) << "\n";
+            std::cout << "String Literal " << std::get<std::string_view>(value) << "\n";
             break;
         default:
             throw std::runtime_error("Invalid literal type");
     }
 }
 
-void assignment::print(const size_t depth) const {
+void var_modification::print(const size_t depth) const {
     print_depth(depth);
 
-    std::cout << "Assignment\n";
-    if (std::holds_alternative<initialization>(variable))
-        std::get<initialization>(variable).print(depth + 1);
-    else
-        std::cout << "Variable " << std::get<nodes::variable>(variable).name << "\n";
+    std::cout << std::format("Assignment %s%s", dereferenced ? "*" : "", var_name);
 
     value->print(depth + 1);
 }

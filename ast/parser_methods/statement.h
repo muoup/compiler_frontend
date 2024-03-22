@@ -8,7 +8,7 @@ namespace ast::pm {
 
     nodes::conditional parse_conditional(lex_cptr &ptr, lex_cptr end);
 
-    nodes::initialization parse_initialization(lex_cptr &ptr, lex_cptr end);
+    nodes::type_instance parse_initialization(lex_cptr &ptr, lex_cptr end);
 
     nodes::un_op parse_unop(lex_cptr &ptr, lex_cptr end);
 

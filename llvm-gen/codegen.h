@@ -6,7 +6,8 @@
 #include <llvm/IR/IRBuilder.h>
 
 namespace ast::nodes {
-    struct const_assignment;
+    struct var_ref;
+    struct initialization;
 }
 
 namespace llvm {
@@ -19,7 +20,6 @@ namespace llvm {
 }
 
 namespace ast::nodes {
-    struct variable;
     struct root;
     struct literal;
     struct method_call;
@@ -29,13 +29,13 @@ namespace ast::nodes {
     struct statement;
     struct return_op;
     struct function;
-    struct initialization;
+    struct type_instance;
     struct code_block;
 }
 
 namespace cg_llvm {
     struct scope_variable {
-        std::variant<llvm::Constant*, llvm::AllocaInst*> var_allocation;
+        llvm::AllocaInst* var_allocation;
         bool is_const;
     };
 
@@ -57,15 +57,19 @@ namespace cg_llvm {
 
     llvm::Value* generate_literal(const ast::nodes::literal &node, const scope_data& scope);
     llvm::Value* generate_method_call(const ast::nodes::method_call &method_call, scope_data& scope);
-    llvm::Value* generate_const_init(const ast::nodes::const_assignment &init, scope_data& scope);
-    llvm::Value* generate_variable(const ast::nodes::variable &var, scope_data& scope);
+    llvm::Value* generate_const_init(const ast::nodes::initialization &init, scope_data& scope);
+    llvm::Value* generate_variable(const ast::nodes::var_ref & var, const scope_data& scope);
     llvm::Value* generate_expression(const ast::nodes::expression &node, scope_data& scope);
     llvm::Value* generate_binop(const ast::nodes::bin_op &node, scope_data &data);
     llvm::Value* generate_statement(const ast::nodes::statement &stmt, scope_data& data);
     llvm::Value* generate_return(const ast::nodes::return_op &ret_op, scope_data& data);
 
+    llvm::Value* generate_store(llvm::AllocaInst *var, llvm::Value *value, scope_data& scope);
+    llvm::Value* generate_load(llvm::AllocaInst *var, const scope_data& scope);
+    llvm::Value* varargs_cast(llvm::Value *val, const scope_data& scope);
+
     llvm::Function* generate_method(const ast::nodes::function &node, std::shared_ptr<llvm::Module> root);
 
-    llvm::Value *generate_initialization(const ast::nodes::initialization &init, scope_data &scope);
+    llvm::AllocaInst *generate_initialization(const ast::nodes::type_instance &init, scope_data &scope);
     void generate_block(const ast::nodes::code_block &node, const scope_data& data);
 }

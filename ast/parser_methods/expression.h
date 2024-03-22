@@ -11,5 +11,5 @@ namespace ast::pm {
     nodes::expression parse_expression(lex_cptr &ptr, const lex_cptr end);
 
     nodes::expression pure_assignment(nodes::expression &lhs, nodes::expression &rhs, nodes::bin_op_type op);
-    nodes::expression assign_initialization(nodes::expression &lhs, nodes::expression &rhs, nodes::bin_op_type type);
+    nodes::expression assign_initialization(const nodes::expression &lhs, nodes::expression &rhs, nodes::bin_op_type type);
 }

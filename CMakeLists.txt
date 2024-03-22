@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(LLVMProj)
+project(llvm_frontend)
 
 find_package(LLVM CONFIG REQUIRED)
 
@@ -8,7 +8,7 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 message("LLVM STATUS:
     Definitions: ${LLVM_DEFINITIONS}
-    Include dirs: ${LLVM_INCLUDE_DIRS}
+    Include Dirs: ${LLVM_INCLUDE_DIRS}
     Libraries: ${LLVM_LIBRARIES}
     Tools: ${LLVM_TOOLS_BINARY_DIR}"
 )
@@ -22,8 +22,8 @@ set(CMAKE_CXX_STANDARD 23)
 file(GLOB_RECURSE FILES "*.cpp" "*.h")
 list(FILTER FILES EXCLUDE REGEX "cmake-build.*")
 
-add_executable(LLVMProj ${FILES}
+add_executable(llvm_frontend ${FILES}
         ast/parser_methods/expression.cpp
         ast/parser_methods/expression.h)
 
-target_link_libraries(LLVMProj PRIVATE LLVMCore)
+target_link_libraries(llvm_frontend PRIVATE LLVMCore)

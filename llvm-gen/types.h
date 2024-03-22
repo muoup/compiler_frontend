@@ -7,7 +7,7 @@ namespace llvm {
 
 namespace ast::nodes {
     struct value_type;
-    struct initialization;
+    struct type_instance;
 }
 
 #define AS_TYPE_GEN(x) reinterpret_cast<type_getter>(x)

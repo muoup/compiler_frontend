@@ -1,7 +1,6 @@
 #include "statement.h"
 
 #include <charconv>
-#include <stack>
 #include <stdexcept>
 
 #include "expression.h"
@@ -51,13 +50,10 @@ nodes::conditional pm::parse_conditional(lex_cptr &ptr, lex_cptr end) {
     };
 }
 
-nodes::initialization pm::parse_initialization(lex_cptr &ptr, lex_cptr end) {
-    const auto type = parse_value_type(ptr, end);
-    const auto var_name = assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span;
-
-    return nodes::initialization {
-        type,
-        nodes::variable { var_name }
+nodes::type_instance pm::parse_initialization(lex_cptr &ptr, lex_cptr end) {
+    return nodes::type_instance {
+        parse_value_type(ptr, end),
+        assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span,
     };
 }
 
@@ -70,11 +66,10 @@ nodes::un_op pm::parse_unop(lex_cptr &ptr, const lex_cptr end) {
 
     ++ptr;
 
-
-    return { nodes::un_op {
+    return nodes::un_op {
         get_unop(operator_type),
         std::make_unique<nodes::expression>(std::move(expr.value()))
-    } };
+    };
 }
 
 nodes::bin_op pm::parse_binop(lex_cptr &ptr, const lex_cptr end) {
@@ -83,10 +78,8 @@ nodes::bin_op pm::parse_binop(lex_cptr &ptr, const lex_cptr end) {
         operator_type.substr(0, operator_type.size() - 1) : operator_type;
 
     return nodes::bin_op {
-        nodes::bin_op {
         get_binop(op_slice),
         operator_type.ends_with("="),
-        }
     };
 }
 
@@ -118,7 +111,7 @@ std::optional<nodes::expression> pm::parse_value(lex_cptr &ptr, const lex_cptr e
         return nodes::expression { parse_method_call(ptr, end) };
 
     if (ptr->type == lex::lex_type::IDENTIFIER)
-        return nodes::expression { nodes::variable { ptr++->span } };
+        return nodes::expression { nodes::var_ref { ptr++->span } };
 
     return std::nullopt;
 }

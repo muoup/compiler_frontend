@@ -37,7 +37,7 @@ nodes::expression pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
         binop_stack.pop();
 
         switch (left.value.index()) {
-            case nodes::expression_type::VARIABLE:
+            case nodes::expression_type::VAR_REF:
                 expr_stack.emplace(
                     pure_assignment(
                         left,
@@ -46,7 +46,7 @@ nodes::expression pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
                     )
                 );
                 break;
-            case nodes::expression_type::INITIALIZATION:
+            case nodes::expression_type::TYPE_INSTANCE:
                 expr_stack.emplace(
                     assign_initialization(
                         left,
@@ -100,43 +100,45 @@ nodes::expression pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
     };
 }
 
-nodes::expression pm::assign_initialization(nodes::expression &lhs, nodes::expression &rhs, nodes::bin_op_type type) {
+nodes::expression pm::assign_initialization(const nodes::expression &lhs, nodes::expression &rhs, const nodes::bin_op_type type) {
     if (type != nodes::bin_op_type::invalid)
         throw std::runtime_error("Initialization can only be a pure assignment");
 
-    const auto &l_val = std::get<nodes::initialization>(lhs.value);
+    return nodes::expression {
+        nodes::initialization {
+            std::get<nodes::type_instance>(lhs.value),
+            std::make_unique<nodes::expression>(std::move(rhs)),
+        }
+    };
+}
 
-    if (l_val.type.is_const) {
+nodes::expression pm::pure_assignment(nodes::expression &lhs, nodes::expression &rhs, nodes::bin_op_type op) {
+    if (std::holds_alternative<nodes::un_op>(lhs.value)) {
+        const auto unop = std::get<nodes::un_op>(std::move(lhs.value));
+
+        if (unop.type != nodes::un_op_type::deref
+        ||  std::holds_alternative<nodes::var_ref>(unop.value->value))
+            throw std::runtime_error("Invalid assignment target");
+
         return nodes::expression {
-            nodes::const_assignment {
-                l_val,
+            nodes::var_modification {
+                true,
+                std::get<nodes::var_ref>(unop.value->value).name,
+                std::make_unique<nodes::expression>(std::move(rhs)),
+                op
+            }
+        };
+    }
+
+    if (std::holds_alternative<nodes::var_ref>(lhs.value)) {
+        return nodes::expression {
+            nodes::var_modification {
+                false,
+                std::get<nodes::type_instance>(lhs.value).var_name,
                 std::make_unique<nodes::expression>(std::move(rhs)),
             }
         };
     }
 
-    return pure_assignment(lhs, rhs, type);
-}
-
-nodes::expression pm::pure_assignment(nodes::expression &lhs, nodes::expression &rhs, nodes::bin_op_type op) {
-    std::variant<nodes::initialization, nodes::variable> l_val;
-
-    switch (lhs.value.index()) {
-        case nodes::expression_type::VARIABLE:
-            l_val = std::get<nodes::variable>(lhs.value);
-            break;
-        case nodes::expression_type::INITIALIZATION:
-            l_val = std::get<nodes::initialization>(lhs.value);
-            break;
-        default:
-            throw std::runtime_error("Invalid assignment target");
-    }
-
-    return nodes::expression {
-    nodes::assignment {
-        std::move(l_val),
-        std::make_unique<nodes::expression>(std::move(rhs)),
-        nodes::bin_op_type::invalid
-        }
-    };
+    throw std::runtime_error("Invalid assignment target");
 }

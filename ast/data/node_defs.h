@@ -15,9 +15,9 @@ namespace ast::nodes {
     struct code_block;
 
     struct expression;
-    struct assignment;
-    struct variable;
-    struct initialization;
+    struct var_modification;
+    struct var_ref;
+    struct type_instance;
     struct method_call;
 
     struct op;

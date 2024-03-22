@@ -31,12 +31,12 @@ namespace lex {
         std::optional<lex_ptr> closer;
     };
 
-    const std::unordered_set<lex_type> LITERAL_SET {
+    inline std::unordered_set<lex_type> LITERAL_SET {
         lex_type::INT_LITERAL, lex_type::FLOAT_LITERAL,
         lex_type::STRING_LITERAL, lex_type::CHAR_LITERAL
     };
 
-    const std::unordered_set<std::string_view> KEYWORD_SET {
+    inline std::unordered_set<std::string_view> KEYWORD_SET {
         "if", "while", "for", "switch",
 
         "mut",
@@ -44,7 +44,7 @@ namespace lex {
         "return"
     };
 
-    const std::unordered_set<std::string_view> PRIMITIVES_SET {
+    inline std::unordered_set<std::string_view> PRIMITIVES_SET {
         "i8", "i16", "i32", "i64",
         "u8", "u16", "u32", "u64",
         "f32", "f64",
@@ -52,18 +52,18 @@ namespace lex {
         "bool", "char", "void",
     };
 
-    const std::unordered_set<char> SYMBOL_SET {
+    inline std::unordered_set<char> SYMBOL_SET {
         '=', '+', '-', '*', '/', '%',
         '!', '&', '|', '^', '~', '<', '>', '?', ':',
 
         ',', '.', '#', ';'
     };
 
-    const std::unordered_set<char> PUNCTUATOR_SET = {
+    inline std::unordered_set<char> PUNCTUATOR_SET = {
         '{', '}', '(', ')', '[', ']'
     };
 
-    const std::unordered_set<std::string_view> SPECIAL_SYMBOL = {
+    inline std::unordered_set<std::string_view> SPECIAL_SYMBOL = {
         "==", "!=", "<=", ">=",
         "&&", "||",
         "++", "--", "**",

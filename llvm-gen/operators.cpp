@@ -16,9 +16,9 @@ const std::unordered_map<ast::nodes::bin_op_type, llvm::Instruction::BinaryOps> 
     { ast::nodes::bin_op_type::mul, llvm::Instruction::BinaryOps::Mul },
     { ast::nodes::bin_op_type::div, llvm::Instruction::BinaryOps::SDiv },
     { ast::nodes::bin_op_type::mod, llvm::Instruction::BinaryOps::SRem },
-    { ast::nodes::bin_op_type::and_, llvm::Instruction::BinaryOps::And },
-    { ast::nodes::bin_op_type::or_, llvm::Instruction::BinaryOps::Or },
-    { ast::nodes::bin_op_type::xor_, llvm::Instruction::BinaryOps::Xor },
+    { ast::nodes::bin_op_type::b_and, llvm::Instruction::BinaryOps::And },
+    { ast::nodes::bin_op_type::b_or, llvm::Instruction::BinaryOps::Or },
+    { ast::nodes::bin_op_type::b_xor, llvm::Instruction::BinaryOps::Xor },
     { ast::nodes::bin_op_type::shl, llvm::Instruction::BinaryOps::Shl },
     { ast::nodes::bin_op_type::shr, llvm::Instruction::BinaryOps::AShr },
 };
@@ -60,6 +60,16 @@ llvm::Value * cg_llvm::attempt_cast(llvm::Value *val, llvm::Type *to_type, const
     throw std::runtime_error("Invalid cast.");
 }
 
+llvm::Value* cg_llvm::varargs_cast(llvm::Value *val, const scope_data &scope) {
+    if (val->getType()->isIntegerTy())
+        return attempt_cast(val, llvm::Type::getInt32Ty(scope.context), scope);
+
+    if (!val->getType()->isPointerTy())
+        throw std::runtime_error("For now, varargs parameters are limited to i32 and pointers.");
+
+    return val;
+}
+
 llvm::Value* cg_llvm::generate_binop(const ast::nodes::bin_op &node, scope_data &data) {
     const auto [lhs, rhs, is_int] = balance_sides(
         generate_expression(*node.left, data),
@@ -77,18 +87,18 @@ llvm::Value* cg_llvm::generate_unop(const ast::nodes::un_op &un_op, scope_data &
 
     switch (un_op.type) {
         using namespace ast::nodes;
-        case un_op_type::l_not:
+        case un_op_type::log_not:
             return data.builder.CreateNot(val);
-        case un_op_type::dereference:
+        case un_op_type::deref:
             if (!val->getType()->isPointerTy())
                 throw std::runtime_error("Dereferencing non-pointer type");
 
             return data.builder.CreateLoad(val->getType(), val);
-        case un_op_type::address_of:
-            if (expr.value.index() != VARIABLE)
+        case un_op_type::addr_of:
+            if (!std::holds_alternative<var_ref>(expr.value))
                 throw std::runtime_error("Cannot take address of non-variable");
 
-            return generate_variable(std::get<variable>(expr.value), data);
+            return generate_variable(std::get<var_ref>(expr.value), data);
         case un_op_type::bit_not:
             if (!val->getType()->isIntegerTy())
                 throw std::runtime_error("Bitwise not on non-integer type");
@@ -109,23 +119,9 @@ llvm::Value* cg_llvm::generate_unop(const ast::nodes::un_op &un_op, scope_data &
     }
 }
 
-llvm::Value* cg_llvm::generate_assignment(const ast::nodes::assignment& node, scope_data& data) {
-    llvm::Value* lhs;
-
-    switch (node.variable.index()) {
-        using namespace ast::nodes;
-        case ASSIGN_INITIALIZATION:
-            lhs = generate_initialization(std::get<initialization>(node.variable), data);
-            break;
-        case ASSIGN_VARIABLE:
-            lhs = generate_variable(std::get<variable>(node.variable), data);
-            break;
-        default:
-            throw std::runtime_error("Invalid assignment type");
-    }
-
-    auto *rhs = generate_expression(*node.value, data);
-
-    // Assign the value to the variable.
-    return data.builder.CreateStore(rhs, lhs);
+llvm::Value* cg_llvm::generate_var_mod(const ast::nodes::var_modification& node, scope_data& data) {
+    return data.builder.CreateStore(
+        generate_expression(*node.value, data),
+        data.get_variable(node.var_name).var_allocation
+    );
 }
