@@ -14,6 +14,6 @@ namespace ast::nodes {
 
 using type_getter = llvm::Type *(*)(llvm::LLVMContext &);
 
-namespace cg_llvm {
+namespace cg {
     llvm::Type* get_llvm_type(const ast::nodes::value_type &val_type, llvm::LLVMContext &context);
 }

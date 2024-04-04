@@ -3,9 +3,9 @@
 #include <unordered_map>
 #include <llvm/IR/Type.h>
 
-#include "../ast/data/ast_nodes.h"
+#include "../ast/data/node_interfaces.h"
 
-using namespace cg_llvm;
+using namespace cg;
 
 const std::unordered_map<ast::nodes::intrinsic_types, type_getter> type_generators {
     { ast::nodes::intrinsic_types::i8, AS_TYPE_GEN(llvm::Type::getInt8Ty) },
@@ -22,7 +22,7 @@ const std::unordered_map<ast::nodes::intrinsic_types, type_getter> type_generato
     { ast::nodes::intrinsic_types::void_, AS_TYPE_GEN(llvm::Type::getVoidTy) }
 };
 
-llvm::Type* cg_llvm::get_llvm_type(const ast::nodes::value_type &val_type, llvm::LLVMContext &context) {
+llvm::Type* cg::get_llvm_type(const ast::nodes::value_type &val_type, llvm::LLVMContext &context) {
     const auto& type = val_type.type;
     llvm::Type* llvm_type;
 

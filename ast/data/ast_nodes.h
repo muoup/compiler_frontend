@@ -1,114 +1,121 @@
 #pragma once
-#include <memory>
 
-#include "node_defs.h"
-#include "abstract_data.h"
-
-#include <vector>
-#include <optional>
+#include "node_interfaces.h"
+#include "LLVM/IR/Value.h"
 
 namespace ast::nodes {
-    struct root {
-        std::vector<function> functions;
-        std::vector<type_instance> global_vars;
 
-        // TODO: Struct and enum definitions
+    // -- Expression Nodes ----------
 
-        void print(size_t depth) const;
-    };
-
-    struct code_block {
-        std::vector<statement> statements;
-
-        void print(size_t depth) const;
-    };
-
-    struct function {
-        value_type return_type;
-        std::string_view function_name;
-        std::vector<type_instance> param_types;
-
-        code_block body;
-
-        void print(size_t depth) const;
-    };
-
-    struct type_instance {
-        value_type type;
-        std::string_view var_name;
-
-        void print(size_t depth) const;
-    };
-
-    struct method_call {
+    struct method_call : expression {
         std::string_view method_name;
-        std::vector<expression> arguments;
+        std::vector<std::unique_ptr<expression>> arguments;
 
-        void print(size_t depth) const;
+        method_call(method_call&&) noexcept = default;
+        method_call(std::string_view method_name,
+                    std::vector<std::unique_ptr<expression>> arguments)
+                : method_name(method_name), arguments(std::move(arguments)) {}
+
+        void print(size_t depth) const override;
+        CODEGEN() override;
+        ~method_call() = default;
     };
 
-    struct bin_op {
-        bin_op_type type;
-        bool assignment;
-        std::unique_ptr<expression> left;
-        std::unique_ptr<expression> right;
+    struct initialization : expression {
+        type_instance variable;
 
-        void print(size_t depth) const;
+        initialization(initialization&&) noexcept = default;
+        initialization(type_instance variable) : variable(variable) {}
+
+        void print(size_t depth) const override;
+        CODEGEN() override;
+        ~initialization() = default;
     };
 
-    struct un_op {
+    struct var_ref : expression {
+        std::string_view name;
+
+        var_ref(var_ref&&) noexcept = default;
+        var_ref(std::string_view name) : name(name) {}
+
+        void print(size_t depth) const override;
+        CODEGEN() override;
+        ~var_ref() = default;
+    };
+
+    struct assignment : expression {
+        std::unique_ptr<expression> lhs, rhs;
+        assn_type type;
+
+        assignment(assignment&&) noexcept = default;
+        assignment(std::unique_ptr<expression> lhs, std::unique_ptr<expression> rhs, assn_type type)
+                : lhs(std::move(lhs)), rhs(std::move(rhs)), type(type) {}
+
+        void print(size_t depth) const override;
+        CODEGEN() override;
+        ~assignment() = default;
+    };
+
+    struct un_op : expression {
         un_op_type type;
         std::unique_ptr<expression> value;
 
-        void print(size_t depth) const;
+        un_op(un_op&&) noexcept = default;
+        un_op(un_op_type type, std::unique_ptr<expression> value) noexcept
+            : type(type), value(std::move(value)) {}
+
+        void print(size_t depth) const override;
+        CODEGEN() override;
+        ~un_op() = default;
+    };
+
+    struct bin_op : expression {
+        bin_op_type type;
+        std::unique_ptr<expression> left;
+        std::unique_ptr<expression> right;
+
+        bin_op(bin_op&&) noexcept = default;
+        bin_op(bin_op_type type, std::unique_ptr<expression> left, std::unique_ptr<expression> right) noexcept
+                : type(type), left(std::move(left)), right(std::move(right)) {}
+
+        void print(size_t depth) const override;
+        CODEGEN() override;
+        ~bin_op() = default;
     };
 
     enum literal_type {
-        UINT, INT,
-        DOUBLE,
+        UINT,
+        INT,
+        FLOAT,
         CHAR,
         STRING
     };
-    struct literal {
-        std::variant<unsigned int, int, double, char, std::string_view> value;
+    struct literal : expression {
+        using lit_variant = std::variant<unsigned int, int, double, char, std::string_view>;
 
-        void print(size_t depth) const;
+        lit_variant value;
+        uint8_t type_size = 32;
+
+        literal(literal&&) noexcept = default;
+        literal(lit_variant value, uint8_t type_size = 32) noexcept : value(std::move(value)), type_size(type_size) {}
+
+        void print(size_t depth) const override;
+        CODEGEN() override;
+        ~literal() = default;
     };
 
-    struct var_modification {
-        bool dereferenced;
-        std::string_view var_name;
-        std::unique_ptr<expression> value;
-        std::optional<bin_op_type> additional_op;
+    // -- Statement Nodes ----------
 
-        void print(size_t depth) const;
-    };
+    struct return_op : statement {
+        std::unique_ptr<expression> val;
 
-    struct initialization {
-        type_instance variable;
-        std::optional<std::unique_ptr<expression>> value;
+        return_op() = default;
+        return_op(return_op&&) noexcept = default;
+        return_op(std::unique_ptr<expression> val) : val(std::move(val)) {}
 
-        void print(size_t depth) const;
-    };
-
-    struct var_ref {
-        std::string_view name;
-
-        void print(size_t depth) const;
-    };
-
-    enum expression_type {
-        METHOD_CALL,
-        INITIALIZATION, VAR_MODIFICATION,
-        VAR_REF, TYPE_INSTANCE,
-        UN_OP, BIN_OP,
-        LITERAL
-    };
-    struct expression {
-        std::variant<method_call, initialization, var_modification, var_ref,
-                    type_instance, un_op, bin_op, literal> value;
-
-        void print(size_t depth) const;
+        void print(size_t depth) const override;
+        ~return_op() = default;
+        CODEGEN() override;
     };
 
     enum class conditional_type {
@@ -116,28 +123,46 @@ namespace ast::nodes {
         WHILE_LOOP,
         DO_WHILE_LOOP
     };
-    struct conditional {
+    struct conditional : statement {
         conditional_type type;
-        expression condition;
-        code_block body;
+        std::unique_ptr<expression> condition;
+        std::unique_ptr<scope_block> body;
 
-        void print(size_t depth) const;
+        conditional(conditional&&) noexcept = default;
+        conditional(conditional_type type, std::unique_ptr<expression> condition, std::unique_ptr<scope_block> body)
+                : type(type), condition(std::move(condition)), body(std::move(body)) {}
+
+        ~conditional() = default;
+        void print(size_t depth) const override;
+        CODEGEN() override;
     };
 
-    struct return_op {
-        std::optional<expression> value;
+    struct expression_root : statement {
+        std::unique_ptr<expression> expr;
 
-        void print(size_t depth) const;
+        expression_root(expression_root&&) noexcept = default;
+        expression_root(std::unique_ptr<expression> expr) : expr(std::move(expr)) {}
+
+        ~expression_root() = default;
+        inline void print(size_t depth) const override {
+            expr->print(depth);
+        };
+        inline CODEGEN() override {
+            return expr->generate_code(scope);
+        };
     };
 
-    enum statement_type {
-        RETURN,
-        EXPRESSION,
-        CONDITIONAL,
-    };
-    struct statement {
-        std::variant<return_op, expression, conditional> value;
+    // -- Root Node -----------------
 
-        void print(size_t depth) const;
+    struct root : codegen_node {
+        std::vector<function> functions;
+        std::vector<type_instance> global_vars;
+
+        root() noexcept = default;
+        root(root&&) noexcept = default;
+        ~root() = default;
+
+        void print(size_t depth = 0) const override;
+        CODEGEN() override;
     };
 }

@@ -22,6 +22,7 @@ namespace lex {
     std::optional<derived_lex> derive_charlit(str_ptr start, str_ptr end);
     lex_token gen_numeric(str_ptr start, str_ptr end);
 
-    std::optional<derived_lex> derive_operator(str_ptr start, str_ptr end);
+    std::optional<derived_lex> derive_expr_op(str_ptr start, str_ptr end);
+    std::optional<derived_lex> derive_assn_op(str_ptr start, str_ptr end);
     std::optional<derived_lex> derive_punctuator(str_ptr start, str_ptr end);
 }

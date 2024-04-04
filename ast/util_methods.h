@@ -19,6 +19,14 @@ namespace ast {
 
     lex_cptr assert_token(lex_cptr& ptr, parse_pred pred);
 
+    template <typename T>
+    T unwrap_or_throw(std::optional<T> opt, std::string_view msg = "Expected value but got nullopt!") {
+        if (!opt)
+            throw std::runtime_error(msg.data());
+
+        return opt.value();
+    }
+
     std::optional<lex_cptr> test_token_val(lex_cptr &ptr, std::string_view val);
     std::optional<lex_cptr> test_token_val(lex_cptr &ptr, std::span<const std::string_view> vals);
     std::optional<lex_cptr> test_token_type(lex_cptr &ptr, lex::lex_type type);
@@ -28,8 +36,6 @@ namespace ast {
     std::optional<lex_cptr> find_by_tok_type(lex_cptr start, lex_cptr end, lex::lex_type type);
 
     bool is_variable_identifier(lex_cptr token);
-
-    std::optional<ast_node> gen_variable_identifier(lex_cptr& token);
 
     template <typename T, typename lex_cptr>
     T parse_until(lex_cptr &ptr, lex_cptr end, std::string_view until, const parse_fn<T> fn,

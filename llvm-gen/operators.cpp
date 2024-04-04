@@ -4,26 +4,11 @@
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Type.h>
 
-#include "codegen.h"
-#include "../ast/declarations.h"
-#include "../ast/data/ast_nodes.h"
+#include "basic_codegen.h"
 
-using namespace cg_llvm;
+using namespace cg;
 
-const std::unordered_map<ast::nodes::bin_op_type, llvm::Instruction::BinaryOps> binop_map {
-    { ast::nodes::bin_op_type::add, llvm::Instruction::BinaryOps::Add },
-    { ast::nodes::bin_op_type::sub, llvm::Instruction::BinaryOps::Sub },
-    { ast::nodes::bin_op_type::mul, llvm::Instruction::BinaryOps::Mul },
-    { ast::nodes::bin_op_type::div, llvm::Instruction::BinaryOps::SDiv },
-    { ast::nodes::bin_op_type::mod, llvm::Instruction::BinaryOps::SRem },
-    { ast::nodes::bin_op_type::b_and, llvm::Instruction::BinaryOps::And },
-    { ast::nodes::bin_op_type::b_or, llvm::Instruction::BinaryOps::Or },
-    { ast::nodes::bin_op_type::b_xor, llvm::Instruction::BinaryOps::Xor },
-    { ast::nodes::bin_op_type::shl, llvm::Instruction::BinaryOps::Shl },
-    { ast::nodes::bin_op_type::shr, llvm::Instruction::BinaryOps::AShr },
-};
-
-balance_result cg_llvm::balance_sides(llvm::Value* lhs, llvm::Value* rhs, const scope_data& data) {
+balance_result cg::balance_sides(llvm::Value* lhs, llvm::Value* rhs, const scope_data& data) {
     const bool is_l_int = lhs->getType()->isIntegerTy();
     const bool is_r_int = rhs->getType()->isIntegerTy();
 
@@ -39,7 +24,7 @@ balance_result cg_llvm::balance_sides(llvm::Value* lhs, llvm::Value* rhs, const 
     };
 }
 
-llvm::Value * cg_llvm::attempt_cast(llvm::Value *val, llvm::Type *to_type, const scope_data &data) {
+llvm::Value * cg::attempt_cast(llvm::Value *val, llvm::Type *to_type, const scope_data &data) {
     const auto *from_type = val->getType();
 
     if (from_type == to_type)
@@ -60,68 +45,12 @@ llvm::Value * cg_llvm::attempt_cast(llvm::Value *val, llvm::Type *to_type, const
     throw std::runtime_error("Invalid cast.");
 }
 
-llvm::Value* cg_llvm::varargs_cast(llvm::Value *val, const scope_data &scope) {
+llvm::Value* cg::varargs_cast(llvm::Value *val, const scope_data &scope) {
     if (val->getType()->isIntegerTy())
         return attempt_cast(val, llvm::Type::getInt32Ty(scope.context), scope);
 
-    if (!val->getType()->isPointerTy())
-        throw std::runtime_error("For now, varargs parameters are limited to i32 and pointers.");
+    if (val->getType()->isPointerTy())
+        return val;
 
-    return val;
-}
-
-llvm::Value* cg_llvm::generate_binop(const ast::nodes::bin_op &node, scope_data &data) {
-    const auto [lhs, rhs, is_int] = balance_sides(
-        generate_expression(*node.left, data),
-        generate_expression(*node.right, data),
-        data
-    );
-    const auto binop_type =
-        static_cast<llvm::Instruction::BinaryOps>(binop_map.at(node.type) + is_int);
-    return data.builder.CreateBinOp(binop_type, lhs, rhs);
-}
-
-llvm::Value* cg_llvm::generate_unop(const ast::nodes::un_op &un_op, scope_data &data) {
-    auto *val = generate_expression(*un_op.value, data);
-    const auto &expr = *un_op.value;
-
-    switch (un_op.type) {
-        using namespace ast::nodes;
-        case un_op_type::log_not:
-            return data.builder.CreateNot(val);
-        case un_op_type::deref:
-            if (!val->getType()->isPointerTy())
-                throw std::runtime_error("Dereferencing non-pointer type");
-
-            return data.builder.CreateLoad(val->getType(), val);
-        case un_op_type::addr_of:
-            if (!std::holds_alternative<var_ref>(expr.value))
-                throw std::runtime_error("Cannot take address of non-variable");
-
-            return generate_variable(std::get<var_ref>(expr.value), data);
-        case un_op_type::bit_not:
-            if (!val->getType()->isIntegerTy())
-                throw std::runtime_error("Bitwise not on non-integer type");
-
-            return data.builder.CreateBinOp(
-                llvm::Instruction::BinaryOps::Xor,
-                val, llvm::ConstantInt::get(val->getType(), -1)
-            );
-        case un_op_type::negate:
-            if (val->getType()->isIntegerTy())
-                return data.builder.CreateNeg(val);
-            else if (val->getType()->isFloatingPointTy())
-                return data.builder.CreateFNeg(val);
-            else
-                throw std::runtime_error("Negation on non-numeric type");
-        default:
-            throw std::runtime_error("Invalid unary operator");
-    }
-}
-
-llvm::Value* cg_llvm::generate_var_mod(const ast::nodes::var_modification& node, scope_data& data) {
-    return data.builder.CreateStore(
-        generate_expression(*node.value, data),
-        data.get_variable(node.var_name).var_allocation
-    );
+    throw std::runtime_error("For now, varargs parameters are limited to i32 and pointers.");
 }

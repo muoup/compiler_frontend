@@ -7,10 +7,6 @@
 
 using namespace lex;
 
-bool ident_end(const char c) {
-    return SYMBOL_SET.contains(c) || c == ' ' || c == '\n';
-}
-
 lex_token lex::gen_numeric(const str_ptr start, const str_ptr end) {
     lex_type type = lex_type::INT_LITERAL;
 
@@ -52,13 +48,28 @@ std::optional<derived_lex> lex::derive_charlit(const str_ptr start, const str_pt
     return derived_lex { lex_type::CHAR_LITERAL, start + 1, start + expected_end - 1, 1 };
 }
 
-std::optional<derived_lex> lex::derive_operator(const str_ptr start, const str_ptr end) {
-    if (!SYMBOL_SET.contains(*start))
+std::optional<derived_lex> lex::derive_expr_op(const str_ptr start, const str_ptr end) {
+    str_ptr to = start;
+
+    if (end - start > 2 && EXPR_SYMBOL.contains({ start, start + 2 })) {
+        ++to;
+    } else if (!EXPR_SYMBOL.contains({ start, start + 1 })) {
         return std::nullopt;
+    }
 
-    const bool is_special = start <= end - 2 && SPECIAL_SYMBOL.contains({ start, start + 2 });
+    return derived_lex { lex_type::EXPR_SYMBOL, start, to };
+}
 
-    return derived_lex { lex_type::SYMBOL, start, start + is_special };
+std::optional<derived_lex> lex::derive_assn_op(const str_ptr start, const str_ptr end) {
+    str_ptr to = start;
+
+    if (end - start > 2 && ASSN_SYMBOL.contains({ start, start + 2 })) {
+        ++to;
+    } else if (!ASSN_SYMBOL.contains({ start, start + 1 })) {
+        return std::nullopt;
+    }
+
+    return derived_lex { lex_type::ASSN_SYMBOL, start, to };
 }
 
 std::optional<derived_lex> lex::derive_punctuator(const str_ptr start, const str_ptr) {

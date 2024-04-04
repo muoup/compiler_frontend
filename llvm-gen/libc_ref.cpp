@@ -3,11 +3,11 @@
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Type.h>
 
-#include "codegen.h"
+#include "basic_codegen.h"
 
-using namespace cg_llvm;
+using namespace cg;
 
-llvm::Function *cg_llvm::get_libc_fn(const std::string_view name, scope_data& scope) {
+llvm::Function *cg::get_libc_fn(const std::string_view name, scope_data& scope) {
     std::vector<llvm::Type*> types;
 
     const auto proper_name = name.substr(libc_prefix.size());

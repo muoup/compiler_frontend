@@ -13,7 +13,8 @@ std::optional<derived_lex> derive(const str_ptr start, const str_ptr end) {
         return [start, end, fn] { return fn(start, end); };
     };
 
-    return derive_operator(start, end)
+    return derive_expr_op(start, end)
+        .or_else(try_derive(derive_assn_op))
         .or_else(try_derive(derive_punctuator))
         .or_else(try_derive(derive_charlit))
         .or_else(try_derive(derive_strlit));

@@ -1,24 +1,17 @@
 #include <iostream>
 #include <llvm/Support/raw_ostream.h>
 
+#include "llvm-gen/basic_codegen.h"
 #include "ast/interface.h"
 #include "lexer/lex.h"
-#include "llvm-gen/codegen.h"
-
-void print_ast(const ast::ast_node& node, const int depth = 0) {
-    for (const auto& child : node.children) {
-        for (int i = 0; i < depth; ++i)
-            std::cout << "  ";
-        std::cout << static_cast<int>(child.type) << " " << child.data << " " << child.metadata << "\n";
-        print_ast(child, depth + 1);
-    }
-}
 
 int main() {
     const auto* code = R"(
         void test() {
             i16 i = 10;
-            __libc_printf("%d", i);
+            //if (i == 10) {
+                __libc_printf("%d", i);
+            //}
         }
 
         i8 main() {
@@ -30,11 +23,10 @@ int main() {
     const auto tokens = lex::lex(code);
     const auto ast = ast::parse(tokens);
 
+    ast.print();
     std::cout << "-------------\n";
 
-    ast.print(0);
-
-    cg_llvm::generate_code(llvm::outs(), ast);
+    cg::generate_code(llvm::outs(), ast);
 
     return 0;
 }

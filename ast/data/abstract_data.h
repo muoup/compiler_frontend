@@ -15,8 +15,6 @@ namespace ast::nodes {
     };
 
     enum class bin_op_type {
-        invalid,
-
         add, sub, mul, div, mod, pow,
         b_and, b_or, b_xor, shl, shr,
         l_and, l_or, l_not, l_xor,
@@ -25,9 +23,14 @@ namespace ast::nodes {
     };
 
     enum class un_op_type {
-        invalid,
-
         deref, addr_of, bit_not, log_not, negate
+    };
+
+    enum class assn_type {
+        none,
+
+        plus_eq, minus_eq, mul_eq, div_eq, mod_eq, pow_eq,
+        b_and_eq, b_or_eq, b_xor_eq, shl_eq, shr_eq
     };
 
     enum var_type_category {
@@ -38,6 +41,13 @@ namespace ast::nodes {
     struct value_type {
         std::variant<intrinsic_types, std::string_view> type;
         bool is_const, is_pointer;
+    };
+
+    struct type_instance {
+        value_type type;
+        std::string_view var_name;
+
+        void print(size_t depth) const;
     };
 
     std::optional<intrinsic_types> get_intrinsic_type(std::string_view type);

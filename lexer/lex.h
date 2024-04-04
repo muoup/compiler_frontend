@@ -5,10 +5,6 @@
 #include <unordered_set>
 #include <vector>
 
-namespace ast {
-    enum class ast_node_type;
-}
-
 namespace lex {
     struct lex_token;
     using str_ptr = std::string_view::const_iterator;
@@ -20,7 +16,8 @@ namespace lex {
         PRIMITIVE, // i8, i16, i32, etc.
         IDENTIFIER, // Variable name, function name, etc.
         INT_LITERAL, FLOAT_LITERAL, STRING_LITERAL, CHAR_LITERAL,
-        SYMBOL, // +, -, *, /, etc
+        EXPR_SYMBOL, // +, -, *, /, etc
+        ASSN_SYMBOL, // =, +=, -=, etc
         PUNCTUATOR
     };
 
@@ -29,11 +26,6 @@ namespace lex {
         std::string_view span;
 
         std::optional<lex_ptr> closer;
-    };
-
-    inline std::unordered_set<lex_type> LITERAL_SET {
-        lex_type::INT_LITERAL, lex_type::FLOAT_LITERAL,
-        lex_type::STRING_LITERAL, lex_type::CHAR_LITERAL
     };
 
     inline std::unordered_set<std::string_view> KEYWORD_SET {
@@ -52,24 +44,24 @@ namespace lex {
         "bool", "char", "void",
     };
 
-    inline std::unordered_set<char> SYMBOL_SET {
-        '=', '+', '-', '*', '/', '%',
-        '!', '&', '|', '^', '~', '<', '>', '?', ':',
+    inline std::unordered_set<std::string_view> EXPR_SYMBOL {
+        "+", "-", "*", "/", "%",
+        "!", "&", "|", "^", "~", "<", ">", "?", ":",
+        "<<", ">>"
 
-        ',', '.', '#', ';'
+        ",", ".", "#", ";",
+
+        "==", "!=", "<=", ">=", "&&", "||",
+        "++", "--", "**"
+    };
+
+    inline std::unordered_set<std::string_view> ASSN_SYMBOL = {
+        "=", "+=", "-=", "*=", "/=", "%=",
+        "&=", "|=", "^=",
     };
 
     inline std::unordered_set<char> PUNCTUATOR_SET = {
         '{', '}', '(', ')', '[', ']'
-    };
-
-    inline std::unordered_set<std::string_view> SPECIAL_SYMBOL = {
-        "==", "!=", "<=", ">=",
-        "&&", "||",
-        "++", "--", "**",
-        "+=", "-=", "*=", "/=", "%=",
-        "&=", "|=", "^=",
-        "<<", ">>"
     };
 
     std::vector<lex_token> lex(std::string_view code);

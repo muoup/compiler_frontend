@@ -4,10 +4,10 @@
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
 
-#include "codegen.h"
+#include "basic_codegen.h"
 #include "types.h"
 
-namespace cg_llvm {
+namespace cg {
     constexpr std::string_view libc_prefix = "__libc_";
 
     const type_getter str_ptr = [] (llvm::LLVMContext& context) {

@@ -1,7 +1,6 @@
 #include "ast_nodes.h"
-#include <iostream>
-
 #include "../parser_methods/operator.h"
+#include <iostream>
 
 using namespace ast::nodes;
 
@@ -21,76 +20,22 @@ void root::print(const size_t depth) const {
         func.print(depth + 1);
 }
 
-void code_block::print(const size_t depth) const {
+void scope_block::print(const size_t depth) const {
     print_depth(depth);
 
     std::cout << "Code block\n";
     for (const auto& stmt : statements)
-        stmt.print(depth + 1);
+        stmt->print(depth + 1);
 }
 
 void function::print(const size_t depth) const {
     print_depth(depth);
 
-    std::cout << "Function " << function_name << "\n";
+    std::cout << "Function " << fn_name << "\n";
     for (const auto& param : param_types)
         param.print(depth + 1);
 
     body.print(depth + 1);
-}
-
-void expression::print(const size_t depth) const {
-    print_depth(depth);
-
-    std::cout << "Expression\n";
-    switch (value.index()) {
-        case METHOD_CALL:
-            std::get<method_call>(value).print(depth + 1);
-            break;
-        case VAR_MODIFICATION:
-            std::get<var_modification>(value).print(depth + 1);
-            break;
-        case INITIALIZATION:
-            std::get<initialization>(value).print(depth + 1);
-            break;
-        case VAR_REF:
-            std::get<var_ref>(value).print(depth + 1);
-            break;
-        case TYPE_INSTANCE:
-            std::get<type_instance>(value).print(depth + 1);
-            break;
-        case UN_OP:
-            std::get<un_op>(value).print(depth + 1);
-            break;
-        case BIN_OP:
-            std::get<bin_op>(value).print(depth + 1);
-            break;
-        case LITERAL:
-            std::get<literal>(value).print(depth + 1);
-            break;
-        default:
-            throw std::runtime_error("Invalid expression type");
-    }
-}
-
-void statement::print(const size_t depth) const {
-    print_depth(depth);
-
-    std::cout << "Statement\n";
-
-    switch (value.index()) {
-        case 0:
-            std::get<return_op>(value).print(depth + 1);
-            break;
-        case 1:
-            std::get<expression>(value).print(depth + 1);
-            break;
-        case 2:
-            std::get<conditional>(value).print(depth + 1);
-            break;
-        default:
-            std::unreachable();
-    }
 }
 
 void return_op::print(const size_t depth) const {
@@ -98,8 +43,8 @@ void return_op::print(const size_t depth) const {
 
     std::cout << "Return\n";
 
-    if (value)
-        value->print(depth + 1);
+    if (val)
+        val->print(depth + 1);
 }
 
 void var_ref::print(const size_t depth) const {
@@ -119,16 +64,14 @@ void initialization::print(const size_t depth) const {
 
     std::cout << "Variable Initialization\n";
     variable.print(depth + 1);
-    if (value)
-        (*value)->print(depth + 1);
 }
 
 void conditional::print(const size_t depth) const {
     print_depth(depth);
 
     std::cout << "Conditional " << static_cast<int>(type) << "\n";
-    condition.print(depth + 1);
-    body.print(depth + 1);
+    condition->print(depth + 1);
+    body->print(depth + 1);
 }
 
 void method_call::print(const size_t depth) const {
@@ -136,7 +79,7 @@ void method_call::print(const size_t depth) const {
 
     std::cout << "Method call " << method_name << "\n";
     for (const auto& arg : arguments)
-        arg.print(depth + 1);
+        arg->print(depth + 1);
 }
 
 void bin_op::print(const size_t depth) const {
@@ -178,10 +121,10 @@ void literal::print(const size_t depth) const {
     }
 }
 
-void var_modification::print(const size_t depth) const {
+void assignment::print(const size_t depth) const {
     print_depth(depth);
 
-    std::cout << std::format("Assignment %s%s", dereferenced ? "*" : "", var_name);
-
-    value->print(depth + 1);
+    std::cout << "Assignment\n";
+    lhs->print(depth + 1);
+    rhs->print(depth + 1);
 }
