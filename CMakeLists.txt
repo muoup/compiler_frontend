@@ -24,6 +24,7 @@ list(FILTER FILES EXCLUDE REGEX "cmake-build.*")
 
 message("FILES: ${FILES}")
 
-add_executable(llvm_frontend ${FILES})
+add_executable(llvm_frontend ${FILES}
+        optimizer/optimizer_codegen.cpp)
 
 target_link_libraries(llvm_frontend PRIVATE LLVMCore)

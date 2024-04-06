@@ -121,11 +121,21 @@ llvm::Value* method_call::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* var_ref::generate_code(cg::scope_data &scope) const {
-    return scope.get_variable(name).var_allocation;
+    auto var = scope.get_variable(name);
+
+    return scope.builder.CreateLoad(
+            var.var_allocation->getAllocatedType(),
+            var.var_allocation
+    );
 }
 
 llvm::Value* return_op::generate_code(cg::scope_data &scope) const {
-    return scope.builder.CreateRet(val ? val->generate_code(scope) : nullptr);
+    auto ret_val = val ? val->generate_code(scope) : nullptr;
+
+    if (ret_val)
+        ret_val = attempt_cast(ret_val, scope.current_function->getReturnType(), scope);
+
+    return scope.builder.CreateRet(ret_val);
 }
 
 llvm::Value* scope_block::generate_code(cg::scope_data &scope) const {
@@ -213,9 +223,23 @@ llvm::Value* un_op::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* assignment::generate_code(cg::scope_data &scope) const {
-    return scope.builder.CreateStore(
+    auto balance = balance_sides(
+        lhs->generate_code(scope),
         rhs->generate_code(scope),
-        lhs->generate_code(scope)
+        scope
+    );
+
+    if (!balance.lhs->getType()->isPointerTy())
+        throw std::runtime_error("Cannot assign to non-pointer type.");
+
+    const auto lhs_ptr = static_cast<llvm::AllocaInst*>(balance.lhs);
+
+    if (lhs_ptr->getAllocatedType() != balance.rhs->getType())
+        balance.rhs = attempt_cast(balance.rhs, lhs_ptr->getAllocatedType(), scope);
+
+    return scope.builder.CreateStore(
+        balance.rhs,
+        balance.lhs
     );
 }
 

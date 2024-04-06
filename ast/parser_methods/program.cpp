@@ -27,8 +27,8 @@ nodes::function pm::parse_method(lex_cptr &ptr, const lex_cptr end) {
     };
 
     auto &code_expressions = function.body.statements;
-    if (code_expressions.empty() || dynamic_cast<nodes::return_op*>(code_expressions.back().get()) != nullptr) {
-        if (function_name != "main") {
+    if (code_expressions.empty() || dynamic_cast<nodes::return_op*>(code_expressions.back().get()) == nullptr) {
+        if (function_name == "main") {
             code_expressions.emplace_back(
                     std::make_unique<nodes::return_op>(
                             std::make_unique<nodes::literal>(0)

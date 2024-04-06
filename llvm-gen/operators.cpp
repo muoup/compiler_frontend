@@ -12,11 +12,8 @@ balance_result cg::balance_sides(llvm::Value* lhs, llvm::Value* rhs, const scope
     const bool is_l_int = lhs->getType()->isIntegerTy();
     const bool is_r_int = rhs->getType()->isIntegerTy();
 
-    // If both are integers, we can just return them as is.
     if (is_l_int == is_r_int)
-        return balance_result {
-            lhs, rhs
-        };
+        return balance_result { lhs, rhs, is_l_int };
 
     return balance_result {
         .lhs = is_l_int ? data.builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(data.context)) : lhs,
