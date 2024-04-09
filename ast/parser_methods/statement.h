@@ -6,7 +6,9 @@
 namespace ast::pm {
     std::unique_ptr<nodes::statement> parse_statement(lex_cptr &ptr, lex_cptr end);
 
-    nodes::conditional parse_conditional(lex_cptr &ptr, lex_cptr end);
+    nodes::loop parse_loop(lex_cptr &ptr, lex_cptr end);
+
+    nodes::if_statement parse_if_statement(lex_cptr &ptr, lex_cptr end);
 
     nodes::type_instance parse_type_instance(lex_cptr &ptr, lex_cptr end);
 

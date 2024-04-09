@@ -22,9 +22,6 @@ set(CMAKE_CXX_STANDARD 23)
 file(GLOB_RECURSE FILES "*.cpp" "*.h")
 list(FILTER FILES EXCLUDE REGEX "cmake-build.*")
 
-message("FILES: ${FILES}")
-
-add_executable(llvm_frontend ${FILES}
-        optimizer/optimizer_codegen.cpp)
+add_executable(llvm_frontend ${FILES})
 
 target_link_libraries(llvm_frontend PRIVATE LLVMCore)

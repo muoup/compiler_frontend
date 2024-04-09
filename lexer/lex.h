@@ -31,7 +31,7 @@ namespace lex {
     inline std::unordered_set<std::string_view> KEYWORD_SET {
         "if", "while", "for", "switch",
 
-        "mut",
+        "mut", "extern", "volatile"
 
         "return"
     };

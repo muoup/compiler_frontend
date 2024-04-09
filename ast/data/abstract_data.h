@@ -40,7 +40,7 @@ namespace ast::nodes {
 
     struct value_type {
         std::variant<intrinsic_types, std::string_view> type;
-        bool is_const, is_pointer;
+        bool is_const, is_pointer, is_volatile;
     };
 
     struct type_instance {

@@ -1,5 +1,6 @@
-#include "interface.h"
+#include <iostream>
 
+#include "interface.h"
 #include "parser_methods/program.h"
 
 using namespace ast;

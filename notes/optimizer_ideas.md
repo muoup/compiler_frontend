@@ -6,14 +6,14 @@ Tails calls allow for the assembly to not generate unnecessary stack frames for
 recursive functions, replacing a call with a jump under the circumstance that
 the function returns either after the call or the call is the value which is
 returned. It is not necessarily that the call must be at the end of the function
-as tail call optimizations can exist in conditional blocks as well, among other
+as tail call optimizations can exist in loop blocks as well, among other
 similar circumstances.
 
 ## Loop Unrolling
 
 For loops under a certain size, it is better to unroll the loop into individual
 repeating blocks of code. This increases the binary size, but avoids the inefficiency
-of the conditional jumps (i.e. branch misses) and the overhead of the loop counter.
+of the loop jumps (i.e. branch misses) and the overhead of the loop counter.
 
 ## Dead Code Elimination
 

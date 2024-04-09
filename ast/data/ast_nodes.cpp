@@ -66,12 +66,29 @@ void initialization::print(const size_t depth) const {
     variable.print(depth + 1);
 }
 
-void conditional::print(const size_t depth) const {
+void loop::print(const size_t depth) const {
     print_depth(depth);
 
-    std::cout << "Conditional " << static_cast<int>(type) << "\n";
+    std::cout << "Loop; pre-eval=" << (pre_eval ? "true" : "false") << "\n";
     condition->print(depth + 1);
     body->print(depth + 1);
+}
+
+void if_statement::print(const size_t depth) const {
+    print_depth(depth);
+    std::cout << "If Statement\n";
+    condition->print(depth + 1);
+    body->print(depth + 1);
+
+    if (!else_body)
+        return;
+
+    print_depth(depth);
+    std::cout << "Else\n";
+
+    std::visit([depth](const auto& else_child) {
+        else_child->print(depth + 1);
+    }, else_body.value());
 }
 
 void method_call::print(const size_t depth) const {

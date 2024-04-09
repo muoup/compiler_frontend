@@ -138,6 +138,10 @@ llvm::Value* return_op::generate_code(cg::scope_data &scope) const {
     return scope.builder.CreateRet(ret_val);
 }
 
+llvm::Value *if_statement::generate_code(cg::scope_data &scope) const {
+    return nullptr;
+}
+
 llvm::Value* scope_block::generate_code(cg::scope_data &scope) const {
     for (const auto &stmt : statements)
         stmt->generate_code(scope);
@@ -243,6 +247,6 @@ llvm::Value* assignment::generate_code(cg::scope_data &scope) const {
     );
 }
 
-llvm::Value* conditional::generate_code(cg::scope_data &scope) const {
+llvm::Value* loop::generate_code(cg::scope_data &scope) const {
     return nullptr;
 }

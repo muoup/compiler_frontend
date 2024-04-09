@@ -25,7 +25,8 @@ namespace ast::nodes {
         type_instance variable;
 
         initialization(initialization&&) noexcept = default;
-        initialization(type_instance variable) : variable(variable) {}
+        initialization(type_instance variable, bool is_volatile = false)
+            : variable(variable) {}
 
         void print(size_t depth) const override;
         CODEGEN() override;
@@ -118,21 +119,39 @@ namespace ast::nodes {
         CODEGEN() override;
     };
 
-    enum class conditional_type {
-        IF_STATEMENT,
-        WHILE_LOOP,
-        DO_WHILE_LOOP
+    struct if_statement;
+    using if_statement_then =
+            std::variant<
+                    std::unique_ptr<scope_block>,
+                    std::unique_ptr<if_statement>
+            >;
+    struct if_statement : statement {
+        std::unique_ptr<expression> condition;
+        std::unique_ptr<scope_block> body;
+        std::optional<if_statement_then> else_body = std::nullopt;
+
+        if_statement(if_statement&&) noexcept = default;
+        if_statement(std::unique_ptr<expression> condition, std::unique_ptr<scope_block> body)
+            : condition(std::move(condition)), body(std::move(body)) {}
+        if_statement(std::unique_ptr<expression> condition, std::unique_ptr<scope_block> body,
+                     if_statement_then else_body)
+            : condition(std::move(condition)), body(std::move(body)), else_body(std::move(else_body)) {}
+
+        ~if_statement() = default;
+        void print(size_t else_child) const override;
+        CODEGEN() override;
     };
-    struct conditional : statement {
-        conditional_type type;
+
+    struct loop : statement {
+        bool pre_eval = true;
         std::unique_ptr<expression> condition;
         std::unique_ptr<scope_block> body;
 
-        conditional(conditional&&) noexcept = default;
-        conditional(conditional_type type, std::unique_ptr<expression> condition, std::unique_ptr<scope_block> body)
-                : type(type), condition(std::move(condition)), body(std::move(body)) {}
+        loop(loop&&) noexcept = default;
+        loop(bool pre_eval, std::unique_ptr<expression> condition, std::unique_ptr<scope_block> body)
+                : pre_eval(pre_eval), condition(std::move(condition)), body(std::move(body)) {}
 
-        ~conditional() = default;
+        ~loop() = default;
         void print(size_t depth) const override;
         CODEGEN() override;
     };
