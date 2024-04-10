@@ -5,14 +5,13 @@
 
 #include <vector>
 #include <optional>
+#include <llvm/IR/Value.h>
+#include <llvm/IR/BasicBlock.h>
+
 #define CODEGEN() llvm::Value* generate_code(cg::scope_data &scope) const
 
 namespace cg {
     struct scope_data;
-}
-
-namespace llvm {
-    class Value;
 }
 
 namespace ast::nodes {
@@ -55,6 +54,7 @@ namespace ast::nodes {
      */
     struct statement : codegen_node {
         statement() = default;
+        statement(statement&&) noexcept = default;
 
         virtual ~statement() = default;
         virtual void print(size_t depth) const override = 0;
@@ -69,16 +69,17 @@ namespace ast::nodes {
      *  also be able to reference any outer scopes.
      */
     struct scope_block : codegen_node {
-        std::vector<std::unique_ptr<statement>> statements;
+        using scope_stmts = std::vector<std::unique_ptr<statement>>;
+        scope_stmts statements;
 
         scope_block() = default;
         scope_block(scope_block&&) noexcept = default;
-        scope_block(std::vector<std::unique_ptr<statement>> statements)
+        scope_block(scope_stmts statements)
             : statements(std::move(statements)) {}
 
         ~scope_block() = default;
         void print(size_t depth) const override;
-        CODEGEN() override;
+        llvm::BasicBlock* generate_code(cg::scope_data &scope) const override;
     };
 
     /**

@@ -71,14 +71,14 @@ void loop::print(const size_t depth) const {
 
     std::cout << "Loop; pre-eval=" << (pre_eval ? "true" : "false") << "\n";
     condition->print(depth + 1);
-    body->print(depth + 1);
+    body.print(depth + 1);
 }
 
 void if_statement::print(const size_t depth) const {
     print_depth(depth);
     std::cout << "If Statement\n";
     condition->print(depth + 1);
-    body->print(depth + 1);
+    body.print(depth + 1);
 
     if (!else_body)
         return;
@@ -86,9 +86,7 @@ void if_statement::print(const size_t depth) const {
     print_depth(depth);
     std::cout << "Else\n";
 
-    std::visit([depth](const auto& else_child) {
-        else_child->print(depth + 1);
-    }, else_body.value());
+    else_body->print(depth + 1);
 }
 
 void method_call::print(const size_t depth) const {
@@ -144,4 +142,10 @@ void assignment::print(const size_t depth) const {
     std::cout << "Assignment\n";
     lhs->print(depth + 1);
     rhs->print(depth + 1);
+}
+
+void raw_var::print(size_t depth) const {
+    print_depth(depth);
+
+    std::cout << "Raw Variable Reference: " << name << "\n";
 }

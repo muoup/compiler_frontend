@@ -20,5 +20,5 @@ llvm::Function *cg::get_libc_fn(const std::string_view name, scope_data& scope) 
     }
     const auto fn_type = llvm::FunctionType::get(ret_type, types, func.varargs);
 
-    return static_cast<llvm::Function *>(scope.root->getOrInsertFunction(proper_name, fn_type).getCallee());
+    return static_cast<llvm::Function *>(scope.module->getOrInsertFunction(proper_name, fn_type).getCallee());
 }

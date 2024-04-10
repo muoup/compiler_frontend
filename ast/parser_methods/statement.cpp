@@ -33,36 +33,18 @@ std::unique_ptr<nodes::statement> pm::parse_statement(lex_cptr &ptr, lex_cptr en
 nodes::if_statement pm::parse_if_statement(lex_cptr &ptr, lex_cptr end) {
     assert_token_val(ptr, "if");
 
-    auto condition = parse_between(ptr, "(",parse_expression);
-    auto stmts = std::make_unique<nodes::scope_block>(parse_between(ptr, parse_body));
-
-    if (!test_token_val(ptr, "else"))
-        return nodes::if_statement {
-            std::move(condition),
-            std::move(stmts)
-        };
-
-    if (ptr->span == "if")
-        return nodes::if_statement {
-            std::move(condition),
-            std::move(stmts),
-            std::make_unique<nodes::if_statement>(
-                parse_if_statement(ptr, end)
-            )
-        };
-
     return nodes::if_statement {
-        std::move(condition),
-        std::move(stmts),
-        std::make_unique<nodes::scope_block>(
-            parse_between(ptr, parse_body)
-        )
+        parse_between(ptr, "(", parse_expression),
+        parse_body(ptr, end),
+        test_token_val(ptr, "else") ?
+            std::make_optional<nodes::scope_block>(parse_body(ptr, end)) :
+            std::nullopt
     };
 }
 
-nodes::loop pm::parse_loop(lex_cptr &ptr, lex_cptr) {
+nodes::loop pm::parse_loop(lex_cptr &ptr, lex_cptr end) {
     if (test_token_val(ptr, "do")) {
-        auto stmts = std::make_unique<nodes::scope_block>(parse_between(ptr, "{", parse_body));
+        auto stmts = parse_body(ptr, end);
         assert_token_val(ptr, "while");
         auto condition = parse_between(ptr, "(", parse_expression);
         assert_token_val(ptr, ";");
@@ -76,7 +58,7 @@ nodes::loop pm::parse_loop(lex_cptr &ptr, lex_cptr) {
         return nodes::loop {
             true,
             parse_between(ptr, "(", parse_expression),
-            std::make_unique<nodes::scope_block>(parse_between(ptr, parse_body))
+            parse_body(ptr, end)
         };
     } else {
         throw std::runtime_error("Expected 'do' or 'while'");

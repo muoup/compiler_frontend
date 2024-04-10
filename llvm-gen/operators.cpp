@@ -5,6 +5,7 @@
 #include <llvm/IR/Type.h>
 
 #include "basic_codegen.h"
+#include "../ast/data/data_maps.h"
 
 using namespace cg;
 
@@ -50,4 +51,38 @@ llvm::Value* cg::varargs_cast(llvm::Value *val, const scope_data &scope) {
         return val;
 
     throw std::runtime_error("For now, varargs parameters are limited to i32 and pointers.");
+}
+
+llvm::Value* cg::generate_binop(const ast::nodes::bin_op &binop,
+                                cg::scope_data &scope) {
+    auto *lhs = binop.left->generate_code(scope);
+    auto *rhs = binop.right->generate_code(scope);
+    auto *rhs_casted = attempt_cast(rhs, lhs->getType(), scope);
+
+    const bool is_fp = lhs->getType()->isFloatingPointTy();
+
+    if (auto it = ast::pm::binop_map.find(binop.type); it != ast::pm::binop_map.end()) {
+        const auto bin_op_type = static_cast<llvm::Instruction::BinaryOps>(it->second + is_fp);
+
+        return scope.builder.CreateBinOp(bin_op_type, lhs, rhs_casted);
+    }
+
+    // TODO: Unsigned Comparisons
+    llvm::CmpInst::Predicate pred;
+
+    if (is_fp) {
+        pred = ast::pm::f_cmp_map.at(binop.type);
+    } else {
+        pred = ast::pm::i_cmp_map.at(binop.type);
+    }
+
+    return is_fp ?
+           scope.builder.CreateFCmp(
+            pred,
+            lhs, rhs_casted
+        ) :
+           scope.builder.CreateICmp(
+            pred,
+            lhs, rhs_casted
+        );
 }

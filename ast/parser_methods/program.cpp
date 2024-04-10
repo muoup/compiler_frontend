@@ -23,7 +23,7 @@ nodes::function pm::parse_method(lex_cptr &ptr, const lex_cptr end) {
         ret_type,
         function_name,
         parse_between(ptr, "(", parse_method_params),
-        parse_between(ptr, "{", parse_body)
+        parse_body(ptr, end)
     };
 
     auto &code_expressions = function.body.statements;
@@ -43,12 +43,16 @@ nodes::function pm::parse_method(lex_cptr &ptr, const lex_cptr end) {
 }
 
 nodes::scope_block pm::parse_body(lex_cptr &ptr, lex_cptr end) {
-    nodes::scope_block body;
+    nodes::scope_block::scope_stmts stmts;
 
-    while (ptr != end)
-        body.statements.emplace_back(parse_statement(ptr, end));
+    if (test_token_val(ptr, "{")) {
+        while (!test_token_val(ptr, "}"))
+            stmts.emplace_back(parse_statement(ptr, end));
+    } else {
+        stmts.emplace_back(parse_statement(ptr, end));
+    }
 
-    return body;
+    return nodes::scope_block { std::move(stmts) };
 }
 
 nodes::value_type pm::parse_value_type(lex_cptr &ptr, const lex_cptr) {

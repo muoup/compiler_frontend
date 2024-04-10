@@ -5,23 +5,23 @@
 #include "ast/interface.h"
 #include "lexer/lex.h"
 
+void generate_machine_code(llvm::Module &module, const ast::nodes::root &root) {
+
+}
+
 int main() {
     const auto* code = R"(
         void test() {
             i16 i = 10;
-            if (i == 10) {
+
+            while (i > 0) {
                 __libc_printf("%d", i);
-            } else if (i == 5) {
-                __libc_printf("%d", i + 5);
-            } else {
-                __libc_printf("Hello, World!");
+                i = i - 1;
             }
         }
 
         i8 main() {
-            do {
-                test();
-            } while (false);
+            test();
             return 0;
         }
     )";
@@ -32,7 +32,7 @@ int main() {
     ast.print();
     std::cout << "-------------\n";
 
-//    cg::generate_code(llvm::outs(), ast);
+    cg::generate_code(ast, llvm::outs());
 
     return 0;
 }

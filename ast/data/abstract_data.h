@@ -17,9 +17,9 @@ namespace ast::nodes {
     enum class bin_op_type {
         add, sub, mul, div, mod, pow,
         b_and, b_or, b_xor, shl, shr,
-        l_and, l_or, l_not, l_xor,
+        l_and, l_or, l_xor,
 
-        eq, neq, lt, gt, lte, gte,
+        eq, neq, lt, gt, lte, gte
     };
 
     enum class un_op_type {

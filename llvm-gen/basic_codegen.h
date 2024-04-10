@@ -15,15 +15,16 @@ namespace cg {
 
     struct scope_data {
         llvm::LLVMContext &context;
-        std::shared_ptr<llvm::Module> root;
+        std::shared_ptr<llvm::Module> module;
         llvm::IRBuilder<> &builder;
         std::vector<std::shared_ptr<var_table>> tables;
 
+        llvm::BasicBlock *entry = nullptr;
         llvm::Function* current_function = nullptr;
 
         const scope_variable& add_variable(std::string_view name, llvm::Type *type, bool const_ = false) const;
         const scope_variable& get_variable(std::string_view name) const;
     };
 
-    void generate_code(llvm::raw_ostream &out, const ast::nodes::root &root);
+    void generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream);
 }

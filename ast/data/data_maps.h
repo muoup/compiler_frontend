@@ -1,7 +1,8 @@
 #pragma once
 #include <unordered_map>
+#include <llvm/IR/InstrTypes.h>
+#include <llvm/IR/Instruction.h>
 #include "abstract_data.h"
-#include "llvm/IR/Instruction.h"
 
 namespace ast::pm {
     const extern std::unordered_map<nodes::bin_op_type, uint16_t> binop_prec;
@@ -12,4 +13,7 @@ namespace ast::pm {
     const extern std::unordered_map<std::string_view, nodes::intrinsic_types> intrin_map;
 
     const extern std::unordered_map<ast::nodes::bin_op_type, llvm::Instruction::BinaryOps> binop_map;
+
+    const extern std::unordered_map<ast::nodes::bin_op_type, llvm::CmpInst::Predicate> i_cmp_map;
+    const extern std::unordered_map<ast::nodes::bin_op_type, llvm::CmpInst::Predicate> f_cmp_map;
 }

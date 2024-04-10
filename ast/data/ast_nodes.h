@@ -44,6 +44,17 @@ namespace ast::nodes {
         ~var_ref() = default;
     };
 
+    struct raw_var : expression {
+        std::string_view name;
+
+        raw_var(raw_var&&) noexcept = default;
+        raw_var(std::string_view name) : name(name) {}
+
+        void print(size_t depth) const override;
+        CODEGEN() override;
+        ~raw_var() = default;
+    };
+
     struct assignment : expression {
         std::unique_ptr<expression> lhs, rhs;
         assn_type type;
@@ -119,22 +130,16 @@ namespace ast::nodes {
         CODEGEN() override;
     };
 
-    struct if_statement;
-    using if_statement_then =
-            std::variant<
-                    std::unique_ptr<scope_block>,
-                    std::unique_ptr<if_statement>
-            >;
     struct if_statement : statement {
         std::unique_ptr<expression> condition;
-        std::unique_ptr<scope_block> body;
-        std::optional<if_statement_then> else_body = std::nullopt;
+        scope_block body;
+        std::optional<scope_block> else_body = std::nullopt;
 
         if_statement(if_statement&&) noexcept = default;
-        if_statement(std::unique_ptr<expression> condition, std::unique_ptr<scope_block> body)
+        if_statement(std::unique_ptr<expression> condition, scope_block body)
             : condition(std::move(condition)), body(std::move(body)) {}
-        if_statement(std::unique_ptr<expression> condition, std::unique_ptr<scope_block> body,
-                     if_statement_then else_body)
+        if_statement(std::unique_ptr<expression> condition, scope_block body,
+                     std::optional<scope_block> else_body)
             : condition(std::move(condition)), body(std::move(body)), else_body(std::move(else_body)) {}
 
         ~if_statement() = default;
@@ -145,10 +150,10 @@ namespace ast::nodes {
     struct loop : statement {
         bool pre_eval = true;
         std::unique_ptr<expression> condition;
-        std::unique_ptr<scope_block> body;
+        scope_block body;
 
         loop(loop&&) noexcept = default;
-        loop(bool pre_eval, std::unique_ptr<expression> condition, std::unique_ptr<scope_block> body)
+        loop(bool pre_eval, std::unique_ptr<expression> condition, scope_block body)
                 : pre_eval(pre_eval), condition(std::move(condition)), body(std::move(body)) {}
 
         ~loop() = default;
