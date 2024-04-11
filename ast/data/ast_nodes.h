@@ -55,19 +55,6 @@ namespace ast::nodes {
         ~raw_var() = default;
     };
 
-    struct assignment : expression {
-        std::unique_ptr<expression> lhs, rhs;
-        assn_type type;
-
-        assignment(assignment&&) noexcept = default;
-        assignment(std::unique_ptr<expression> lhs, std::unique_ptr<expression> rhs, assn_type type)
-                : lhs(std::move(lhs)), rhs(std::move(rhs)), type(type) {}
-
-        void print(size_t depth) const override;
-        CODEGEN() override;
-        ~assignment() = default;
-    };
-
     struct un_op : expression {
         un_op_type type;
         std::unique_ptr<expression> value;
@@ -93,6 +80,21 @@ namespace ast::nodes {
         void print(size_t depth) const override;
         CODEGEN() override;
         ~bin_op() = default;
+    };
+
+    struct assignment : expression {
+        std::unique_ptr<expression> lhs, rhs;
+        std::optional<bin_op_type> op = std::nullopt;
+
+        assignment(assignment&&) noexcept = default;
+        assignment(std::unique_ptr<expression> lhs, std::unique_ptr<expression> rhs)
+                : lhs(std::move(lhs)), rhs(std::move(rhs)) {}
+        assignment(std::unique_ptr<expression> lhs, std::unique_ptr<expression> rhs, bin_op_type op)
+                : lhs(std::move(lhs)), rhs(std::move(rhs)), op(std::make_optional(op)) {}
+
+        void print(size_t depth) const override;
+        CODEGEN() override;
+        ~assignment() = default;
     };
 
     enum literal_type {
@@ -157,6 +159,23 @@ namespace ast::nodes {
                 : pre_eval(pre_eval), condition(std::move(condition)), body(std::move(body)) {}
 
         ~loop() = default;
+        void print(size_t depth) const override;
+        CODEGEN() override;
+    };
+
+    struct for_loop : statement {
+        std::unique_ptr<expression> init;
+        std::unique_ptr<expression> condition;
+        std::unique_ptr<expression> update;
+        scope_block body;
+
+        for_loop(for_loop&&) noexcept = default;
+        for_loop(std::unique_ptr<expression> init, std::unique_ptr<expression> condition,
+                 std::unique_ptr<expression> update, scope_block body)
+                : init(std::move(init)), condition(std::move(condition)),
+                  update(std::move(update)), body(std::move(body)) {}
+
+        ~for_loop() = default;
         void print(size_t depth) const override;
         CODEGEN() override;
     };

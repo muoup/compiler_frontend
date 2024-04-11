@@ -11,7 +11,6 @@ namespace cg {
 
     struct balance_result {
         llvm::Value *lhs, *rhs;
-        bool is_int;
     };
 
     llvm::Value* varargs_cast(llvm::Value *val, const scope_data& scope);
@@ -20,5 +19,8 @@ namespace cg {
 
     llvm::Value* attempt_cast(llvm::Value *val, llvm::Type *to_type, const scope_data &data);
 
-    llvm::Value* generate_binop(const ast::nodes::bin_op &binop, cg::scope_data &scope);
+    llvm::Value* generate_binop(llvm::Value *left,
+                                llvm::Value *ight,
+                                ast::nodes::bin_op_type type,
+                                cg::scope_data &scope);
 }

@@ -61,15 +61,13 @@ std::optional<derived_lex> lex::derive_expr_op(const str_ptr start, const str_pt
 }
 
 std::optional<derived_lex> lex::derive_assn_op(const str_ptr start, const str_ptr end) {
-    str_ptr to = start;
-
     if (end - start > 2 && ASSN_SYMBOL.contains({ start, start + 2 })) {
-        ++to;
-    } else if (!ASSN_SYMBOL.contains({ start, start + 1 })) {
-        return std::nullopt;
+        return derived_lex { lex_type::ASSN_SYMBOL, start, start + 1 };
+    } else if (ASSN_SYMBOL.contains({ start, start + 1 })) {
+        return derived_lex { lex_type::ASSN_SYMBOL, start, start };
     }
 
-    return derived_lex { lex_type::ASSN_SYMBOL, start, to };
+    return std::nullopt;
 }
 
 std::optional<derived_lex> lex::derive_punctuator(const str_ptr start, const str_ptr) {

@@ -12,10 +12,15 @@
 using namespace ast;
 
 std::unique_ptr<nodes::statement> pm::parse_statement(lex_cptr &ptr, lex_cptr end) {
+    if (ptr == end)
+        return nullptr;
+
     if (ptr->span == "if") {
         return std::make_unique<nodes::if_statement>(parse_if_statement(ptr, end));
     } else if (ptr->span == "while" || ptr->span == "do") {
         return std::make_unique<nodes::loop>(parse_loop(ptr, end));
+    } else if (ptr->span == "for") {
+        return std::make_unique<nodes::for_loop>(parse_for_loop(ptr, end));
     } else if (ptr->span == "return") {
         if (++ptr == end)
             return std::make_unique<nodes::return_op>();
@@ -63,6 +68,18 @@ nodes::loop pm::parse_loop(lex_cptr &ptr, lex_cptr end) {
     } else {
         throw std::runtime_error("Expected 'do' or 'while'");
     }
+}
+
+nodes::for_loop pm::parse_for_loop(lex_cptr &ptr, lex_cptr end) {
+    assert_token_val(ptr, "for");
+    assert_token_val(ptr, "(");
+
+    return nodes::for_loop {
+        parse_until(ptr, end, ";", parse_expression),
+        parse_until(ptr, end, ";", parse_expression),
+        parse_until(ptr, end, ")", parse_expression),
+        parse_body(ptr, end)
+    };
 }
 
 nodes::type_instance pm::parse_type_instance(lex_cptr &ptr, lex_cptr end) {

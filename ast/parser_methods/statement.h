@@ -8,6 +8,8 @@ namespace ast::pm {
 
     nodes::loop parse_loop(lex_cptr &ptr, lex_cptr end);
 
+    nodes::for_loop parse_for_loop(lex_cptr &ptr, lex_cptr end);
+
     nodes::if_statement parse_if_statement(lex_cptr &ptr, lex_cptr end);
 
     nodes::type_instance parse_type_instance(lex_cptr &ptr, lex_cptr end);

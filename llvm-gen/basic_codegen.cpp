@@ -46,7 +46,7 @@ const scope_variable& scope_data::get_variable(std::string_view name) const {
 void cg::generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream) {
     llvm::LLVMContext context;
     auto module = std::make_shared<llvm::Module>("main", context);
-    llvm::IRBuilder<> builder(context);
+    llvm::IRBuilder<> builder { context };
 
     scope_data scope {
         context,
@@ -203,13 +203,43 @@ llvm::Value* loop::generate_code(cg::scope_data &scope) const {
     auto cond = conditional_expression(condition, scope);
     scope.builder.CreateCondBr(cond, block, ret_block);
 
-    if (pre_eval) {
-        scope.builder.SetInsertPoint(pre_init);
-        scope.builder.CreateBr(cond_block);
-        scope.builder.SetInsertPoint(cond_block);
-    }
+    scope.builder.SetInsertPoint(pre_init);
+    scope.builder.CreateBr(pre_init ? cond_block : block);
+    scope.builder.SetInsertPoint(cond_block);
 
     scope.builder.SetInsertPoint(ret_block);
+
+    return nullptr;
+}
+
+
+llvm::Value *for_loop::generate_code(cg::scope_data &scope) const {
+    init->generate_code(scope);
+    auto pre_ins_pt = scope.builder.GetInsertBlock();
+
+    auto *loop_body = body.generate_code(scope);
+    auto *loop_iter = llvm::BasicBlock::Create(scope.context, "loop_iter", scope.current_function);
+    auto *loop_cond = llvm::BasicBlock::Create(scope.context, "loop_cond", scope.current_function);
+    auto *loop_merge = llvm::BasicBlock::Create(scope.context, "loop_merge", scope.current_function);
+
+    scope.builder.SetInsertPoint(pre_ins_pt);
+    scope.builder.CreateBr(loop_cond);
+
+    scope.builder.SetInsertPoint(loop_body);
+    scope.builder.CreateBr(loop_iter);
+
+    scope.builder.SetInsertPoint(loop_iter);
+    update->generate_code(scope);
+    scope.builder.CreateBr(loop_cond);
+
+    scope.builder.SetInsertPoint(loop_cond);
+    scope.builder.CreateCondBr(
+            conditional_expression(condition, scope),
+            loop_body,
+            loop_merge
+    );
+
+    scope.builder.SetInsertPoint(loop_merge);
 
     return nullptr;
 }
@@ -253,7 +283,11 @@ llvm::Value* function::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* bin_op::generate_code(cg::scope_data &scope) const {
-    return cg::generate_binop(*this, scope);
+    return cg::generate_binop(
+            left->generate_code(scope),
+            right->generate_code(scope),
+            type, scope
+    );
 }
 
 llvm::Value* un_op::generate_code(cg::scope_data &scope) const {
@@ -291,22 +325,31 @@ llvm::Value* un_op::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* assignment::generate_code(cg::scope_data &scope) const {
-    auto balance = balance_sides(
+    auto [bal_lhs, bal_rhs] = balance_sides(
         lhs->generate_code(scope),
         rhs->generate_code(scope),
         scope
     );
 
-    if (!balance.lhs->getType()->isPointerTy())
+    if (!bal_lhs->getType()->isPointerTy())
         throw std::runtime_error("Cannot assign to non-pointer type.");
 
-    const auto lhs_ptr = static_cast<llvm::AllocaInst*>(balance.lhs);
+    const auto lhs_ptr = static_cast<llvm::AllocaInst*>(bal_lhs);
 
-    if (lhs_ptr->getAllocatedType() != balance.rhs->getType())
-        balance.rhs = attempt_cast(balance.rhs, lhs_ptr->getAllocatedType(), scope);
+    if (lhs_ptr->getAllocatedType() != bal_rhs->getType())
+        bal_rhs = attempt_cast(bal_rhs, lhs_ptr->getAllocatedType(), scope);
+
+    if (op) {
+        auto pre_val = scope.builder.CreateLoad(lhs_ptr->getAllocatedType(), lhs_ptr);
+        bal_rhs = cg::generate_binop(
+                pre_val,
+                bal_rhs,
+                *op, scope
+        );
+    }
 
     return scope.builder.CreateStore(
-        balance.rhs,
-        balance.lhs
+            bal_rhs,
+            bal_lhs
     );
 }

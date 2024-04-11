@@ -149,3 +149,24 @@ void raw_var::print(size_t depth) const {
 
     std::cout << "Raw Variable Reference: " << name << "\n";
 }
+
+void for_loop::print(size_t depth) const {
+    print_depth(depth);
+    std::cout << "For loop\n";
+
+    print_depth(depth + 1);
+    std::cout << "Init\n";
+    init->print(depth + 2);
+
+    print_depth(depth + 1);
+    std::cout << "Condition\n";
+    condition->print(depth + 2);
+
+    print_depth(depth + 1);
+    std::cout << "Update\n";
+    update->print(depth + 2);
+
+    print_depth(depth + 1);
+    std::cout << "Body\n";
+    body.print(depth + 2);
+}

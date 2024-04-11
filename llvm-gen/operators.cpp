@@ -14,7 +14,7 @@ balance_result cg::balance_sides(llvm::Value* lhs, llvm::Value* rhs, const scope
     const bool is_r_int = rhs->getType()->isIntegerTy();
 
     if (is_l_int == is_r_int)
-        return balance_result { lhs, rhs, is_l_int };
+        return balance_result { lhs, rhs };
 
     return balance_result {
         .lhs = is_l_int ? data.builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(data.context)) : lhs,
@@ -53,15 +53,13 @@ llvm::Value* cg::varargs_cast(llvm::Value *val, const scope_data &scope) {
     throw std::runtime_error("For now, varargs parameters are limited to i32 and pointers.");
 }
 
-llvm::Value* cg::generate_binop(const ast::nodes::bin_op &binop,
+llvm::Value* cg::generate_binop(llvm::Value *lhs, llvm::Value *rhs,
+                                ast::nodes::bin_op_type type,
                                 cg::scope_data &scope) {
-    auto *lhs = binop.left->generate_code(scope);
-    auto *rhs = binop.right->generate_code(scope);
     auto *rhs_casted = attempt_cast(rhs, lhs->getType(), scope);
-
     const bool is_fp = lhs->getType()->isFloatingPointTy();
 
-    if (auto it = ast::pm::binop_map.find(binop.type); it != ast::pm::binop_map.end()) {
+    if (auto it = ast::pm::binop_map.find(type); it != ast::pm::binop_map.end()) {
         const auto bin_op_type = static_cast<llvm::Instruction::BinaryOps>(it->second + is_fp);
 
         return scope.builder.CreateBinOp(bin_op_type, lhs, rhs_casted);
@@ -71,9 +69,9 @@ llvm::Value* cg::generate_binop(const ast::nodes::bin_op &binop,
     llvm::CmpInst::Predicate pred;
 
     if (is_fp) {
-        pred = ast::pm::f_cmp_map.at(binop.type);
+        pred = ast::pm::f_cmp_map.at(type);
     } else {
-        pred = ast::pm::i_cmp_map.at(binop.type);
+        pred = ast::pm::i_cmp_map.at(type);
     }
 
     return is_fp ?

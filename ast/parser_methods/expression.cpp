@@ -65,11 +65,21 @@ std::unique_ptr<nodes::expression> pm::parse_expression(lex_cptr &ptr, const lex
             make_var_raw(lhs);
 
             auto rhs = parse_expression(ptr, end);
+            const auto assn_str = tok.value()->span;
+
+            if (assn_str.size() == 1) {
+                return std::make_unique<nodes::assignment>(std::move(lhs), std::move(rhs));
+            }
+
+            auto binop = get_binop(std::string_view { assn_str.begin(), assn_str.end() - 1 });
+
+            if (!binop)
+                throw std::runtime_error("Invalid assignment operator");
 
             return std::make_unique<nodes::assignment>(
-                    std::move(lhs),
-                    std::move(rhs),
-                    get_assign((*tok)->span).value()
+                std::move(lhs),
+                std::move(rhs),
+                binop.value()
             );
         }
 

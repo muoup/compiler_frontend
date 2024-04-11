@@ -12,11 +12,8 @@ void generate_machine_code(llvm::Module &module, const ast::nodes::root &root) {
 int main() {
     const auto* code = R"(
         void test() {
-            i16 i = 10;
-
-            while (i > 0) {
+            for (i16 i = 0; i < 10; i += 1) {
                 __libc_printf("%d", i);
-                i = i - 1;
             }
         }
 
