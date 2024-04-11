@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include "../declarations.h"
+#include "../util.h"
 #include "../data/node_interfaces.h"
 
 namespace ast::pm {

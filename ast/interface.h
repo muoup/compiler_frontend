@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include "declarations.h"
+#include "util.h"
 #include "data/ast_nodes.h"
 
 namespace lex {

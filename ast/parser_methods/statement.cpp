@@ -6,7 +6,7 @@
 #include "expression.h"
 #include "operator.h"
 #include "program.h"
-#include "../util_methods.h"
+#include "../util.h"
 #include "../../lexer/lex.h"
 
 using namespace ast;

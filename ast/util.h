@@ -6,9 +6,24 @@
 #include <stdexcept>
 #include <vector>
 
-#include "declarations.h"
+#include "util.h"
+
+namespace lex {
+    struct lex_token;
+    enum class lex_type;
+}
 
 namespace ast {
+    using lex_cptr = std::vector<lex::lex_token>::const_iterator;
+
+    template <typename T>
+    using parse_fn = T(*)(lex_cptr&, lex_cptr);
+
+    template <typename T>
+    using loop_fn = std::optional<T>(*)(lex_cptr&);
+
+    using parse_pred = bool(*)(lex_cptr);
+
     void throw_unexpected(const lex::lex_token& token, std::string_view expected = "No explanation given.");
     void throw_unclosed(const lex::lex_token& token, std::string_view expected = "No explanation given.");
 

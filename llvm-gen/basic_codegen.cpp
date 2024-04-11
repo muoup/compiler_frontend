@@ -60,11 +60,8 @@ void cg::generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream)
 }
 
 llvm::Value* root::generate_code(cg::scope_data &scope) const {
-//    for (const auto &var : global_vars)
-//        var.generate_code(scope);
-
-    for (const auto &fn : functions)
-        fn.generate_code(scope);
+    for (const auto &prog_stmts : program_level_statements)
+        prog_stmts->generate_code(scope);
 
     return nullptr;
 }
@@ -280,6 +277,10 @@ llvm::Value* function::generate_code(cg::scope_data &scope) const {
 
     body.generate_code(param_scope);
     return func;
+}
+
+llvm::Value *struct_declaration::generate_code(cg::scope_data &scope) const {
+    return nullptr;
 }
 
 llvm::Value* bin_op::generate_code(cg::scope_data &scope) const {

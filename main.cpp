@@ -11,13 +11,19 @@ void generate_machine_code(llvm::Module &module, const ast::nodes::root &root) {
 
 int main() {
     const auto* code = R"(
-        void test() {
+        struct test_struct {
+            i8 a;
+            i16 b;
+            i32 c;
+        }
+
+        fn test() {
             for (i16 i = 0; i < 10; i += 1) {
                 __libc_printf("%d", i);
             }
         }
 
-        i8 main() {
+        fn main() -> i8 {
             test();
             return 0;
         }
@@ -29,7 +35,7 @@ int main() {
     ast.print();
     std::cout << "-------------\n";
 
-    cg::generate_code(ast, llvm::outs());
+//    cg::generate_code(ast, llvm::outs());
 
     return 0;
 }

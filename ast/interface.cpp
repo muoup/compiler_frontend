@@ -12,7 +12,7 @@ nodes::root ast::parse(const std::vector<lex::lex_token> &tokens) {
     const auto end = tokens.cend();
 
     while (ptr < end) {
-        root.functions.emplace_back(pm::parse_method(ptr, end));
+        root.program_level_statements.emplace_back(pm::parse_program_level_stmt(ptr, end));
     }
 
     return root;

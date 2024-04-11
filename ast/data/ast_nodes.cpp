@@ -1,5 +1,6 @@
 #include "ast_nodes.h"
 #include "../parser_methods/operator.h"
+#include "data_maps.h"
 #include <iostream>
 
 using namespace ast::nodes;
@@ -13,11 +14,8 @@ void root::print(const size_t depth) const {
     print_depth(depth);
 
     std::cout << "Root\n";
-    for (const auto& var : global_vars)
-        var.print(depth + 1);
-
-    for (const auto& func : functions)
-        func.print(depth + 1);
+    for (const auto& stmt : program_level_statements)
+        stmt->print(depth + 1);
 }
 
 void scope_block::print(const size_t depth) const {
@@ -56,7 +54,22 @@ void var_ref::print(const size_t depth) const {
 void type_instance::print(const size_t depth) const {
     print_depth(depth);
 
-    std::cout << "Initialization: " << var_name << "\n";
+    std::cout << "Initialization: " << var_name << " ";
+
+    const auto &type_ref = type.type;
+
+    if (std::holds_alternative<intrinsic_types>(type_ref)) {
+        auto intrinsic = std::get<intrinsic_types>(type_ref);
+
+        for (const auto &[key, val] : pm::intrin_map) {
+            if (val == intrinsic) {
+                std::cout << key << "\n";
+                break;
+            }
+        }
+    } else {
+        std::cout << std::get<std::string_view>(type_ref) << "\n";
+    }
 }
 
 void initialization::print(const size_t depth) const {
@@ -169,4 +182,12 @@ void for_loop::print(size_t depth) const {
     print_depth(depth + 1);
     std::cout << "Body\n";
     body.print(depth + 2);
+}
+
+void struct_declaration::print(size_t depth) const {
+    print_depth(depth);
+    std::cout << "Struct " << name << "\n";
+
+    for (const auto& field : fields)
+        field.print(depth + 1);
 }

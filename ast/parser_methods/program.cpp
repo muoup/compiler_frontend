@@ -1,11 +1,21 @@
 #include "program.h"
 
 #include "expression.h"
-#include "../util_methods.h"
+#include "../util.h"
 #include "../../lexer/lex.h"
 #include "statement.h"
 
 using namespace ast;
+
+std::unique_ptr<nodes::program_level_stmt> pm::parse_program_level_stmt(ast::lex_cptr &ptr, ast::lex_cptr end) {
+    if (ptr->span == "fn") {
+        return std::make_unique<nodes::function>(parse_method(ptr, end));
+    } else if (ptr->span == "struct") {
+        return std::make_unique<nodes::struct_declaration>(parse_struct_decl(ptr, end));
+    }
+
+    return nullptr;
+}
 
 std::vector<nodes::type_instance> pm::parse_method_params(lex_cptr &ptr, const lex_cptr end) {
     return parse_split(ptr, end, ",", parse_type_instance);
@@ -16,13 +26,19 @@ std::vector<std::unique_ptr<nodes::expression>> pm::parse_call_params(lex_cptr &
 }
 
 nodes::function pm::parse_method(lex_cptr &ptr, const lex_cptr end) {
-    const auto ret_type = parse_value_type(ptr, end);
+    assert_token_val(ptr, "fn");
+
     const auto function_name = assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span;
+    auto params = parse_between(ptr, "(", parse_method_params);
+
+    auto ret_type = test_token_val(ptr, "->") ?
+            parse_value_type(ptr, end) :
+            nodes::value_type { "void" };
 
     nodes::function function {
         ret_type,
         function_name,
-        parse_between(ptr, "(", parse_method_params),
+        std::move(params),
         parse_body(ptr, end)
     };
 

@@ -7,7 +7,7 @@
 #include "operator.h"
 #include "statement.h"
 #include "../../lexer/lex.h"
-#include "../util_methods.h"
+#include "../util.h"
 
 using namespace ast;
 

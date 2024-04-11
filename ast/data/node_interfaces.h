@@ -62,47 +62,18 @@ namespace ast::nodes {
     };
 
     /**
-     *  Code Block: Non-Abstract Data Type
-     *  ----------------------------------
-     *  A code block represents a scope, any code blocks
-     *  within will have their own innermost scope but will
-     *  also be able to reference any outer scopes.
+     *  Program Level Statement: Abstract Data Type
+     *  -------------------------------------------
+     *  A program-level statement is something which can be executed from the
+     *  root of the program. This is usually either a prototype (struct or function),
+     *  a function definition, or a global variable declaration.
      */
-    struct scope_block : codegen_node {
-        using scope_stmts = std::vector<std::unique_ptr<statement>>;
-        scope_stmts statements;
+    struct program_level_stmt : codegen_node {
+        program_level_stmt() = default;
+        program_level_stmt(program_level_stmt&&) noexcept = default;
 
-        scope_block() = default;
-        scope_block(scope_block&&) noexcept = default;
-        scope_block(scope_stmts statements)
-            : statements(std::move(statements)) {}
-
-        ~scope_block() = default;
-        void print(size_t depth) const override;
-        llvm::BasicBlock* generate_code(cg::scope_data &scope) const override;
-    };
-
-    /**
-     *  Function: Non-Abstract Data Type
-     *  -------------------------------
-     *  A function represents a callable block of code at the top level of the program.
-     *  Functionally this acts very similar to a statement, but differs in how it must
-     *  be implemented into a program. In the future, if functions are able to be implemented
-     *  within a function, the line between a function and a statement will blur. But for now,
-     *  functions are a top-level construct.
-     */
-    struct function : codegen_node {
-        value_type return_type;
-        std::string_view fn_name;
-        std::vector<type_instance> param_types;
-        scope_block body;
-
-        function(function&&) noexcept = default;
-        function(value_type return_type, std::string_view method_name, std::vector<type_instance> param_types, scope_block body)
-            : return_type(return_type), fn_name(method_name), param_types(std::move(param_types)), body(std::move(body)) {}
-
-        ~function() = default;
-        void print(size_t depth) const override;
-        CODEGEN() override;
+        virtual ~program_level_stmt() = default;
+        virtual void print(size_t depth) const override = 0;
+        CODEGEN() override = 0;
     };
 }
