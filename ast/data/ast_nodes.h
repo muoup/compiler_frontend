@@ -83,6 +83,8 @@ namespace ast::nodes {
         void print(size_t depth) const override;
         CODEGEN() override;
         ~method_call() = default;
+
+        value_type get_type() const override;
     };
 
     struct initialization : expression {
@@ -95,28 +97,22 @@ namespace ast::nodes {
         void print(size_t depth) const override;
         CODEGEN() override;
         ~initialization() = default;
+
+        value_type get_type() const override;
     };
 
     struct var_ref : expression {
         std::string_view name;
+        std::optional<nodes::value_type> type = std::nullopt;
 
         var_ref(var_ref&&) noexcept = default;
-        var_ref(std::string_view name) : name(name) {}
+        var_ref(std::string_view name, std::optional<nodes::value_type> type) : name(name), type(type) {}
 
         void print(size_t depth) const override;
         CODEGEN() override;
         ~var_ref() = default;
-    };
 
-    struct raw_var : expression {
-        std::string_view name;
-
-        raw_var(raw_var&&) noexcept = default;
-        raw_var(std::string_view name) : name(name) {}
-
-        void print(size_t depth) const override;
-        CODEGEN() override;
-        ~raw_var() = default;
+        value_type get_type() const override;
     };
 
     struct un_op : expression {
@@ -130,6 +126,8 @@ namespace ast::nodes {
         void print(size_t depth) const override;
         CODEGEN() override;
         ~un_op() = default;
+
+        value_type get_type() const override;
     };
 
     struct bin_op : expression {
@@ -141,10 +139,38 @@ namespace ast::nodes {
         bin_op(bin_op_type type, std::unique_ptr<expression> left, std::unique_ptr<expression> right) noexcept
                 : type(type), left(std::move(left)), right(std::move(right)) {}
 
+        virtual void populate(std::unique_ptr<expression> left, std::unique_ptr<expression> right) {
+            this->left = std::move(left);
+            this->right = std::move(right);
+        }
+
         void print(size_t depth) const override;
         CODEGEN() override;
         ~bin_op() = default;
+
+        value_type get_type() const override;
     };
+
+//    struct accessor : bin_op {
+//        bool is_arrow;
+//        std::unique_ptr<expression> left;
+//        std::unique_ptr<expression> right;
+//
+//        accessor(accessor&&) noexcept = default;
+//        accessor(bool is_arrow, std::unique_ptr<expression> left, std::unique_ptr<expression> right) noexcept
+//                : is_arrow(is_arrow), left(std::move(left)), right(std::move(right)) {}
+//
+//        void print(size_t depth) const override;
+//        CODEGEN() override;
+//        ~accessor() = default;
+//
+//        void populate(std::unique_ptr<expression> left, std::unique_ptr<expression> right) override {
+//            this->left = std::move(left);
+//            this->right = std::move(right);
+//        }
+//
+//        value_type get_type() const override;
+//    };
 
     struct assignment : expression {
         std::unique_ptr<expression> lhs, rhs;
@@ -159,6 +185,8 @@ namespace ast::nodes {
         void print(size_t depth) const override;
         CODEGEN() override;
         ~assignment() = default;
+
+        value_type get_type() const override;
     };
 
     enum literal_type {
@@ -180,6 +208,8 @@ namespace ast::nodes {
         void print(size_t depth) const override;
         CODEGEN() override;
         ~literal() = default;
+
+        value_type get_type() const override;
     };
 
     // -- Statement Nodes ----------

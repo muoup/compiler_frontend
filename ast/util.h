@@ -5,8 +5,10 @@
 #include <span>
 #include <stdexcept>
 #include <vector>
+#include <unordered_map>
 
 #include "util.h"
+#include "data/abstract_data.h"
 
 namespace lex {
     struct lex_token;
@@ -14,6 +16,10 @@ namespace lex {
 }
 
 namespace ast {
+    extern std::vector<std::unordered_map<std::string_view, ast::nodes::value_type>> scope_stack;
+    extern std::unordered_map<std::string_view, std::vector<ast::nodes::type_instance>> struct_types;
+    extern std::unordered_map<std::string_view, ast::nodes::value_type> function_types;
+
     using lex_cptr = std::vector<lex::lex_token>::const_iterator;
 
     template <typename T>
@@ -23,6 +29,8 @@ namespace ast {
     using loop_fn = std::optional<T>(*)(lex_cptr&);
 
     using parse_pred = bool(*)(lex_cptr);
+
+    std::optional<ast::nodes::value_type> get_variable_type(std::string_view var_name);
 
     void throw_unexpected(const lex::lex_token& token, std::string_view expected = "No explanation given.");
     void throw_unclosed(const lex::lex_token& token, std::string_view expected = "No explanation given.");

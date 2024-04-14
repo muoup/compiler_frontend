@@ -15,32 +15,38 @@ scope_data gen_inner_scope(scope_data &scope) {
     scope_data data = scope;
     data.entry = llvm::BasicBlock::Create(data.context, "entry", data.current_function);
     data.builder.SetInsertPoint(data.entry);
-    data.tables.emplace_back(std::make_shared<var_table>());
+    data.var_tables.emplace_back(std::make_shared<var_table>());
     return data;
 }
 
-const scope_variable& scope_data::add_variable(std::string_view name, llvm::Type *type, bool const_) const {
-    if (tables.back()->contains(name))
+template <typename T>
+using generic_table = std::vector<std::shared_ptr<std::unordered_map<std::string_view, T>>>;
+
+template <typename T>
+const T& add_to_table(const generic_table<T> &table, std::string_view name, T value) {
+    if (table.back()->contains(name))
         throw std::runtime_error("Variable already exists in symbol table.");
 
-    auto* alloca_inst = builder.CreateAlloca(type);
-    alloca_inst->setName(name);
-
-    tables.back()->emplace(
-        name,
-        scope_variable { alloca_inst, const_ }
-    );
-
-    return get_variable(name);
+    table.back()->emplace(name, value);
+    return table.back()->at(name);
 }
 
-const scope_variable& scope_data::get_variable(std::string_view name) const {
-    for (auto it = tables.rbegin(); it != tables.rend(); ++it) {
+template <typename T>
+const T& get_from_table(const generic_table<T> &table, std::string_view name) {
+    for (auto it = table.rbegin(); it != table.rend(); ++it) {
         if ((*it)->contains(name))
             return (*it)->at(name);
     }
 
-    throw std::runtime_error("Variable not found in symbol table.");
+    throw std::runtime_error("Index could not be found in table.");
+}
+
+const scope_variable& scope_data::get_variable(std::string_view name) const {
+    return get_from_table(var_tables, name);
+}
+
+const struct_definition& scope_data::get_struct(std::string_view name) const {
+    return struct_table->at(name);
 }
 
 void cg::generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream) {
@@ -52,7 +58,8 @@ void cg::generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream)
         context,
         module,
         builder,
-        std::vector { std::make_shared<var_table>() }
+        std::vector { std::make_shared<var_table>() },
+        std::make_shared<std::unordered_map<std::string_view, struct_definition>>()
     };
 
     root.generate_code(scope);
@@ -95,10 +102,13 @@ llvm::Value* literal::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* initialization::generate_code(cg::scope_data &scope) const {
-    return scope.add_variable(
-        variable.var_name,
-        get_llvm_type(variable.type, scope.context)
-    ).var_allocation;
+    auto type = get_llvm_type(variable.type, scope);
+
+    return add_to_table(scope.var_tables, variable.var_name, scope_variable {
+        .var_allocation = scope.builder.CreateAlloca(type),
+        .struct_type = get_struct_ref(variable.type, scope),
+        .is_const = false
+    }).var_allocation;
 }
 
 llvm::Value* method_call::generate_code(cg::scope_data &scope) const {
@@ -109,16 +119,16 @@ llvm::Value* method_call::generate_code(cg::scope_data &scope) const {
     std::vector<llvm::Value*> args;
 
     for (auto i = 0; i < arguments.size(); ++i) {
-        auto child = arguments[i]->generate_code(scope);
+        auto param_val = cg::load_expr(arguments[i], scope);
 
         if (i < func->arg_size())
-            child = attempt_cast(child, func->getArg(i)->getType(), scope);
+            param_val = attempt_cast(param_val, func->getArg(i)->getType(), scope);
         else if (i >= func->arg_size() && !func->isVarArg())
             throw std::runtime_error("Argument count mismatch.");
         else
-            child = varargs_cast(child, scope);
+            param_val = varargs_cast(param_val, scope);
 
-        args.emplace_back(child);
+        args.emplace_back(param_val);
     }
 
     if (!func)
@@ -131,16 +141,6 @@ llvm::Value* method_call::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* var_ref::generate_code(cg::scope_data &scope) const {
-    auto var = scope.get_variable(name);
-    auto alloc_type = var.var_allocation->getAllocatedType();
-
-    return scope.builder.CreateLoad(
-        alloc_type,
-        var.var_allocation
-    );
-}
-
-llvm::Value *raw_var::generate_code(cg::scope_data &scope) const {
     return scope.get_variable(name).var_allocation;
 }
 
@@ -251,13 +251,13 @@ llvm::BasicBlock* scope_block::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* function::generate_code(cg::scope_data &scope) const {
-    llvm::Type *type = get_llvm_type(this->return_type, scope.context);
+    llvm::Type *type = get_llvm_type(this->return_type, scope);
 
     std::vector<llvm::Type*> params;
 
     params.reserve(param_types.size());
     for (const auto &param : param_types)
-        params.emplace_back(get_llvm_type(param.type, scope.context));
+        params.emplace_back(get_llvm_type(param.type, scope));
 
     llvm::FunctionType *func_type = llvm::FunctionType::get(type, llvm::ArrayRef<llvm::Type*> { params }, false);
     llvm::Function *func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, fn_name, *scope.module);
@@ -280,15 +280,24 @@ llvm::Value* function::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value *struct_declaration::generate_code(cg::scope_data &scope) const {
-    return nullptr;
-}
+    std::vector<llvm::Type*> field_types;
+    std::vector<std::string_view> field_names;
 
-llvm::Value* bin_op::generate_code(cg::scope_data &scope) const {
-    return cg::generate_binop(
-            left->generate_code(scope),
-            right->generate_code(scope),
-            type, scope
-    );
+    field_types.reserve(this->fields.size());
+    for (const auto &field : this->fields) {
+        field_types.emplace_back(get_llvm_type(field.type, scope));
+        field_names.emplace_back(field.var_name);
+    }
+
+    if (scope.struct_table->contains(name))
+        throw std::runtime_error("Struct already exists in symbol table.");
+
+    scope.struct_table->emplace(name, struct_definition {
+        llvm::StructType::create(scope.context, field_types, name),
+        std::move(field_names)
+    });
+
+    return nullptr;
 }
 
 llvm::Value* un_op::generate_code(cg::scope_data &scope) const {
@@ -325,32 +334,26 @@ llvm::Value* un_op::generate_code(cg::scope_data &scope) const {
     }
 }
 
-llvm::Value* assignment::generate_code(cg::scope_data &scope) const {
-    auto [bal_lhs, bal_rhs] = balance_sides(
-        lhs->generate_code(scope),
-        rhs->generate_code(scope),
-        scope
-    );
+llvm::Value* bin_op::generate_code(cg::scope_data &scope) const {
+    return cg::generate_bin_op(left, right, type, scope);
+}
 
-    if (!bal_lhs->getType()->isPointerTy())
+llvm::Value* assignment::generate_code(cg::scope_data &scope) const {
+    auto *l_val = this->lhs->generate_code(scope);
+    auto *r_val = op ?
+                    cg::generate_bin_op(lhs, rhs, *op, scope) :
+                    this->rhs->generate_code(scope);
+
+    if (!l_val->getType()->isPointerTy())
         throw std::runtime_error("Cannot assign to non-pointer type.");
 
-    const auto lhs_ptr = static_cast<llvm::AllocaInst*>(bal_lhs);
+    auto type = get_llvm_type(lhs->get_type(), scope);
 
-    if (lhs_ptr->getAllocatedType() != bal_rhs->getType())
-        bal_rhs = attempt_cast(bal_rhs, lhs_ptr->getAllocatedType(), scope);
-
-    if (op) {
-        auto pre_val = scope.builder.CreateLoad(lhs_ptr->getAllocatedType(), lhs_ptr);
-        bal_rhs = cg::generate_binop(
-                pre_val,
-                bal_rhs,
-                *op, scope
-        );
-    }
+    if (r_val->getType() != type)
+        r_val = attempt_cast(r_val, type, scope);
 
     return scope.builder.CreateStore(
-            bal_rhs,
-            bal_lhs
+            r_val,
+            l_val
     );
 }

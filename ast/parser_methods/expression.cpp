@@ -11,18 +11,6 @@
 
 using namespace ast;
 
-void make_var_raw(std::unique_ptr<nodes::expression>& expr) {
-    if (auto unop = dynamic_cast<nodes::un_op*>(expr.get()); unop) {
-        make_var_raw(unop->value);
-    } else if (auto var_ref = dynamic_cast<nodes::var_ref*>(expr.get()); var_ref) {
-        expr.release();
-        expr = std::make_unique<nodes::raw_var>(var_ref->name);
-    }
-
-    return;
-    //throw std::runtime_error("Invalid expression type");
-}
-
 std::unique_ptr<nodes::expression> pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
     std::stack<std::unique_ptr<nodes::expression>> expr_stack;
     std::stack<std::unique_ptr<nodes::bin_op>> binop_stack;
@@ -61,8 +49,6 @@ std::unique_ptr<nodes::expression> pm::parse_expression(lex_cptr &ptr, const lex
 
             auto lhs = std::move(expr_stack.top());
             expr_stack.pop();
-
-            make_var_raw(lhs);
 
             auto rhs = parse_expression(ptr, end);
             const auto assn_str = tok.value()->span;

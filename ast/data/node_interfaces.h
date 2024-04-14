@@ -43,6 +43,8 @@ namespace ast::nodes {
         ~expression() override = default;
         void print(size_t depth) const override = 0;
         CODEGEN() override = 0;
+
+        virtual value_type get_type() const = 0;
     };
 
     /**

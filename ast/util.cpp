@@ -8,6 +8,20 @@
 
 using namespace ast;
 
+std::vector<std::unordered_map<std::string_view, ast::nodes::value_type>> ast::scope_stack {};
+std::unordered_map<std::string_view, std::vector<ast::nodes::type_instance>> ast::struct_types {};
+std::unordered_map<std::string_view, ast::nodes::value_type> ast::function_types {};
+
+std::optional<ast::nodes::value_type> ast::get_variable_type(std::string_view var_name) {
+    for (auto it = scope_stack.rbegin(); it != scope_stack.rend(); ++it) {
+        auto find = it->find(var_name);
+        if (find != it->end())
+            return find->second;
+    }
+
+    return std::nullopt;
+}
+
 void ast::throw_unexpected(const lex::lex_token& token, const std::string_view expected) {
     throw std::runtime_error(std::format("Unexpected token: {}, {}", token.span, expected));
 }

@@ -8,7 +8,7 @@
 namespace ast::pm {
     std::unique_ptr<nodes::program_level_stmt> parse_program_level_stmt(lex_cptr& ptr, lex_cptr end);
 
-    nodes::function parse_method(lex_cptr& ptr, lex_cptr end);
+    nodes::function parse_function(lex_cptr& ptr, const lex_cptr end);
     nodes::scope_block parse_body(lex_cptr& ptr, lex_cptr end);
     nodes::value_type parse_value_type(lex_cptr& ptr, lex_cptr end);
     nodes::struct_declaration parse_struct_decl(lex_cptr& ptr, lex_cptr end);

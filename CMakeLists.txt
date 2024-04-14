@@ -24,6 +24,8 @@ list(FILTER FILES EXCLUDE REGEX "cmake-build.*")
 
 add_executable(llvm_frontend ${FILES}
         ast/parser_methods/declarations.cpp
-        ast/parser_methods/declarations.h)
+        ast/parser_methods/declarations.h
+        ast/data/expr_types.cpp
+)
 
 target_link_libraries(llvm_frontend PRIVATE LLVMCore)

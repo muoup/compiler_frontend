@@ -5,6 +5,8 @@ using namespace ast;
 using namespace nodes;
 
 const std::unordered_map<bin_op_type, uint16_t> pm::binop_prec {
+    { bin_op_type::dot, 1 },
+    { bin_op_type::arrow, 1 },
     { bin_op_type::l_or,  2  },
     { bin_op_type::l_and, 3  },
     { bin_op_type::l_xor, 3  },
@@ -47,6 +49,8 @@ const std::unordered_map<std::string_view, bin_op_type> pm::binop_type_map {
     { "<<", bin_op_type::shl   },
     { ">>", bin_op_type::shr   },
     { "**", bin_op_type::pow   },
+    { ".", bin_op_type::dot   },
+    { "->", bin_op_type::arrow },
 };
 
 const std::unordered_map<std::string_view, un_op_type> pm::unop_type_map {
@@ -90,7 +94,7 @@ const std::unordered_map<std::string_view, assn_type> pm::assign_type_map {
     { "|=",  assn_type::b_or_eq     }
 };
 
-const std::unordered_map<ast::nodes::bin_op_type, llvm::Instruction::BinaryOps> pm::binop_map {
+const std::unordered_map<ast::nodes::bin_op_type, llvm::Instruction::BinaryOps> pm::basic_binop_map {
     { ast::nodes::bin_op_type::add, llvm::Instruction::BinaryOps::Add },
     { ast::nodes::bin_op_type::sub, llvm::Instruction::BinaryOps::Sub },
     { ast::nodes::bin_op_type::mul, llvm::Instruction::BinaryOps::Mul },

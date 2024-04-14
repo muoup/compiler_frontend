@@ -6,21 +6,15 @@
 
 #include "basic_codegen.h"
 #include "../ast/data/data_maps.h"
+#include "types.h"
 
 using namespace cg;
+using namespace ast;
 
-balance_result cg::balance_sides(llvm::Value* lhs, llvm::Value* rhs, const scope_data& data) {
-    const bool is_l_int = lhs->getType()->isIntegerTy();
-    const bool is_r_int = rhs->getType()->isIntegerTy();
-
-    if (is_l_int == is_r_int)
-        return balance_result { lhs, rhs };
-
-    return balance_result {
-        .lhs = is_l_int ? data.builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(data.context)) : lhs,
-        .rhs = is_r_int ? rhs : data.builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(data.context)),
-    };
-}
+struct pseudo_bin_op {
+    const std::unique_ptr<nodes::expression> &left, &right;
+    nodes::bin_op_type type;
+};
 
 llvm::Value * cg::attempt_cast(llvm::Value *val, llvm::Type *to_type, const scope_data &data) {
     const auto *from_type = val->getType();
@@ -53,34 +47,95 @@ llvm::Value* cg::varargs_cast(llvm::Value *val, const scope_data &scope) {
     throw std::runtime_error("For now, varargs parameters are limited to i32 and pointers.");
 }
 
-llvm::Value* cg::generate_binop(llvm::Value *lhs, llvm::Value *rhs,
-                                ast::nodes::bin_op_type type,
-                                cg::scope_data &scope) {
-    auto *rhs_casted = attempt_cast(rhs, lhs->getType(), scope);
-    const bool is_fp = lhs->getType()->isFloatingPointTy();
+llvm::Value* cg::load_expr(const std::unique_ptr<nodes::expression> &expr, cg::scope_data &scope) {
+    auto val = expr->generate_code(scope);
 
-    if (auto it = ast::pm::binop_map.find(type); it != ast::pm::binop_map.end()) {
-        const auto bin_op_type = static_cast<llvm::Instruction::BinaryOps>(it->second + is_fp);
+    if (dynamic_cast<const nodes::literal*>(expr.get()) == nullptr) {
+        auto type = expr->get_type();
 
-        return scope.builder.CreateBinOp(bin_op_type, lhs, rhs_casted);
+        val = scope.builder.CreateLoad(cg::get_llvm_type(type, scope), val);
     }
 
-    // TODO: Unsigned Comparisons
-    llvm::CmpInst::Predicate pred;
+    return val;
+}
+
+struct sides_read {
+    llvm::Value *lhs, *rhs;
+};
+sides_read read_sides(const pseudo_bin_op &ref, cg::scope_data &scope) {
+    auto lhs = load_expr(ref.left, scope);
+    auto rhs = load_expr(ref.right, scope);
+
+    return sides_read { lhs, attempt_cast(rhs, lhs->getType(), scope) };
+}
+
+llvm::Value *generate_comparison(const pseudo_bin_op &ref, cg::scope_data &scope) {
+    auto [lhs, rhs] = read_sides(ref, scope);
+    const auto is_fp = lhs->getType()->isFloatingPointTy();
 
     if (is_fp) {
-        pred = ast::pm::f_cmp_map.at(type);
-    } else {
-        pred = ast::pm::i_cmp_map.at(type);
-    }
-
-    return is_fp ?
-           scope.builder.CreateFCmp(
-            pred,
-            lhs, rhs_casted
-        ) :
-           scope.builder.CreateICmp(
-            pred,
-            lhs, rhs_casted
+        return scope.builder.CreateFCmp(
+                llvm::CmpInst::Predicate::FCMP_OEQ,
+                lhs, rhs
         );
+    } else {
+        return scope.builder.CreateICmp(
+                llvm::CmpInst::Predicate::ICMP_EQ,
+                lhs, rhs
+        );
+    }
+}
+
+llvm::Value* generate_basic_op(const pseudo_bin_op &ref, cg::scope_data &scope) {
+    auto *lhs = load_expr(ref.left, scope);
+    auto *rhs = load_expr(ref.right, scope);
+    rhs = attempt_cast(rhs, lhs->getType(), scope);
+
+    auto mapped_type = pm::basic_binop_map.at(ref.type);
+
+    const auto bin_op_type = static_cast<llvm::Instruction::BinaryOps>(mapped_type + rhs->getType()->isFloatingPointTy());
+
+    return scope.builder.CreateBinOp(bin_op_type, lhs, rhs);
+}
+
+llvm::Value* cg::generate_accessor(const std::unique_ptr<ast::nodes::expression> &left, const std::unique_ptr<ast::nodes::expression> &right, bool is_arrow, cg::scope_data &scope) {
+    auto *l_ref = dynamic_cast<const nodes::var_ref*>(left.get());
+    auto *r_ref = dynamic_cast<const nodes::var_ref*>(right.get());
+
+    if (l_ref == nullptr)
+        throw std::runtime_error("Invalid left side of accessor.");
+
+    auto get_var = scope.get_variable(l_ref->name);
+    auto var_alloc = get_var.var_allocation;
+    llvm::Value *var_val = is_arrow ?
+                           (llvm::Value*) scope.builder.CreateLoad(var_alloc->getAllocatedType(), var_alloc) :
+                           (llvm::Value*) get_var.var_allocation;
+
+    if (get_var.struct_type == nullptr)
+        throw std::runtime_error("Invalid left side of accessor.");
+
+    auto *struct_type = get_var.struct_type->struct_type;
+    auto field_index = std::ranges::find(get_var.struct_type->field_names, r_ref->name);
+
+    if (field_index == get_var.struct_type->field_names.end())
+        throw std::runtime_error("Invalid right side of accessor.");
+
+    auto field_index_int = std::distance(get_var.struct_type->field_names.begin(), field_index);
+
+    return scope.builder.CreateStructGEP(struct_type, var_val, field_index_int);
+}
+
+llvm::Value* cg::generate_bin_op(const std::unique_ptr<ast::nodes::expression> &left, const std::unique_ptr<ast::nodes::expression> &right, const ast::nodes::bin_op_type type, cg::scope_data &scope) {
+    const pseudo_bin_op ref { left, right, type };
+
+    if (pm::basic_binop_map.contains(type))
+        return generate_basic_op(ref, scope);
+
+    if (pm::i_cmp_map.contains(type) || pm::f_cmp_map.contains(type))
+        return generate_comparison(ref, scope);
+
+    if (type == nodes::bin_op_type::dot || type == nodes::bin_op_type::arrow)
+        return generate_accessor(left, right, type == nodes::bin_op_type::arrow, scope);
+
+    throw std::runtime_error("Invalid binary operator.");
 }

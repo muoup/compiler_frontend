@@ -19,7 +19,9 @@ namespace ast::nodes {
         b_and, b_or, b_xor, shl, shr,
         l_and, l_or, l_xor,
 
-        eq, neq, lt, gt, lte, gte
+        eq, neq, lt, gt, lte, gte,
+
+        dot, arrow
     };
 
     enum class un_op_type {
@@ -40,7 +42,12 @@ namespace ast::nodes {
 
     struct value_type {
         std::variant<intrinsic_types, std::string_view> type;
-        bool is_const, is_pointer, is_volatile;
+        bool is_const, is_volatile;
+
+        void print(size_t depth) const;
+        bool is_intrinsic() const {
+            return std::holds_alternative<intrinsic_types>(type);
+        };
     };
 
     struct type_instance {

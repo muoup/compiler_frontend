@@ -22,5 +22,7 @@ namespace ast::pm {
 
     std::unique_ptr<nodes::expression> parse_value(lex_cptr &ptr, const lex_cptr end);
 
+    nodes::var_ref parse_variable(lex_cptr &ptr, lex_cptr end);
+
     std::optional<nodes::literal> parse_literal(lex_cptr &ptr, lex_cptr end);
 }

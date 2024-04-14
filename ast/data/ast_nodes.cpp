@@ -30,6 +30,16 @@ void function::print(const size_t depth) const {
     print_depth(depth);
 
     std::cout << "Function " << fn_name << "\n";
+
+    print_depth(depth + 1);
+    std::cout << "Return Type\n";
+    return_type.print(depth + 2);
+
+    if (!param_types.empty()) {
+        print_depth(depth);
+        std::cout << "Parameters\n";
+    }
+
     for (const auto& param : param_types)
         param.print(depth + 1);
 
@@ -49,26 +59,39 @@ void var_ref::print(const size_t depth) const {
     print_depth(depth);
 
     std::cout << "Variable Reference: " << name << "\n";
+
+    if (type)
+        type->print(depth + 1);
+    else {
+        print_depth(depth + 1);
+        std::cout << "Type Not Found\n";
+    }
 }
 
 void type_instance::print(const size_t depth) const {
     print_depth(depth);
 
-    std::cout << "Initialization: " << var_name << " ";
+    std::cout << "Initialization: " << var_name << '\n';
+    type.print(depth + 1);
+}
 
-    const auto &type_ref = type.type;
+void value_type::print(size_t depth) const {
+    print_depth(depth);
 
-    if (std::holds_alternative<intrinsic_types>(type_ref)) {
-        auto intrinsic = std::get<intrinsic_types>(type_ref);
+    std::cout << "Type: ";
 
-        for (const auto &[key, val] : pm::intrin_map) {
-            if (val == intrinsic) {
-                std::cout << key << "\n";
-                break;
-            }
+    if (!std::holds_alternative<intrinsic_types>(type)) {
+        std::cout << std::get<std::string_view>(type) << "\n";
+        return;
+    }
+
+    auto intrinsic = std::get<intrinsic_types>(type);
+
+    for (const auto &[key, val] : pm::intrin_map) {
+        if (val == intrinsic) {
+            std::cout << "Intrinsic Type (" << key << ")\n";
+            break;
         }
-    } else {
-        std::cout << std::get<std::string_view>(type_ref) << "\n";
     }
 }
 
@@ -155,12 +178,6 @@ void assignment::print(const size_t depth) const {
     std::cout << "Assignment\n";
     lhs->print(depth + 1);
     rhs->print(depth + 1);
-}
-
-void raw_var::print(size_t depth) const {
-    print_depth(depth);
-
-    std::cout << "Raw Variable Reference: " << name << "\n";
 }
 
 void for_loop::print(size_t depth) const {

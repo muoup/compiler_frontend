@@ -6,7 +6,6 @@
 #include "expression.h"
 #include "operator.h"
 #include "program.h"
-#include "../util.h"
 #include "../../lexer/lex.h"
 
 using namespace ast;
@@ -83,9 +82,14 @@ nodes::for_loop pm::parse_for_loop(lex_cptr &ptr, lex_cptr end) {
 }
 
 nodes::type_instance pm::parse_type_instance(lex_cptr &ptr, lex_cptr end) {
+    auto val_type = parse_value_type(ptr, end);
+    auto type = assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span;
+
+    scope_stack.back().emplace(type, val_type);
+
     return nodes::type_instance {
-        parse_value_type(ptr, end),
-        assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span,
+        val_type,
+        type
     };
 }
 
@@ -130,6 +134,16 @@ nodes::method_call pm::parse_method_call(lex_cptr &ptr, const lex_cptr) {
     return method_call;
 }
 
+nodes::var_ref pm::parse_variable(ast::lex_cptr &ptr, ast::lex_cptr end) {
+    auto name = assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span;
+    auto type = get_variable_type(name);
+
+    return nodes::var_ref {
+        name,
+        type
+    };
+}
+
 std::unique_ptr<nodes::expression> pm::parse_value(lex_cptr &ptr, const lex_cptr end) {
     if (auto literal = parse_literal(ptr, end))
         return std::make_unique<nodes::literal>(std::move(literal.value()));
@@ -144,7 +158,7 @@ std::unique_ptr<nodes::expression> pm::parse_value(lex_cptr &ptr, const lex_cptr
         return std::make_unique<nodes::method_call>(parse_method_call(ptr, end));
 
     if (ptr->type == lex::lex_type::IDENTIFIER)
-        return std::make_unique<nodes::var_ref>(ptr++->span);
+        return std::make_unique<nodes::var_ref>(parse_variable(ptr, end));
 
     return nullptr;
 }

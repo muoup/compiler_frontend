@@ -1,5 +1,7 @@
 #pragma once
 
+#include "basic_codegen.h"
+
 namespace llvm {
     class Type;
     class LLVMContext;
@@ -15,5 +17,6 @@ namespace ast::nodes {
 using type_getter = llvm::Type *(*)(llvm::LLVMContext &);
 
 namespace cg {
-    llvm::Type* get_llvm_type(const ast::nodes::value_type &val_type, llvm::LLVMContext &context);
+    const struct_definition* get_struct_ref(const ast::nodes::value_type &val_type, scope_data &scope);
+    llvm::Type* get_llvm_type(const ast::nodes::value_type &val_type, scope_data &scope);
 }

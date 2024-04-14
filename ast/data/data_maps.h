@@ -12,7 +12,7 @@ namespace ast::pm {
 
     const extern std::unordered_map<std::string_view, nodes::intrinsic_types> intrin_map;
 
-    const extern std::unordered_map<ast::nodes::bin_op_type, llvm::Instruction::BinaryOps> binop_map;
+    const extern std::unordered_map<ast::nodes::bin_op_type, llvm::Instruction::BinaryOps> basic_binop_map;
 
     const extern std::unordered_map<ast::nodes::bin_op_type, llvm::CmpInst::Predicate> i_cmp_map;
     const extern std::unordered_map<ast::nodes::bin_op_type, llvm::CmpInst::Predicate> f_cmp_map;
