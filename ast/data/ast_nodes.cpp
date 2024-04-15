@@ -170,3 +170,7 @@ void for_loop::print(size_t depth) const {
     std::cout << "Body\n";
     body.print(depth + 2);
 }
+
+void expression_root::print(size_t depth) const {
+    expr->print(depth);
+}

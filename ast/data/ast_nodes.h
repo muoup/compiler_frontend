@@ -1,7 +1,6 @@
 #pragma once
 
 #include "node_interfaces.h"
-#include "LLVM/IR/Value.h"
 
 namespace ast::nodes {
 
@@ -17,8 +16,8 @@ namespace ast::nodes {
                 : method_name(method_name), arguments(std::move(arguments)) {}
 
         void print(size_t depth) const override;
-        CODEGEN() override;
-        ~method_call() = default;
+        CG_CODEGEN() CG_OVERRIDE;
+        ~method_call() override = default;
     };
 
     struct initialization : expression {
@@ -29,8 +28,8 @@ namespace ast::nodes {
             : variable(variable) {}
 
         void print(size_t depth) const override;
-        CODEGEN() override;
-        ~initialization() = default;
+        CG_CODEGEN() CG_OVERRIDE;
+        ~initialization() override = default;
     };
 
     struct var_ref : expression {
@@ -40,8 +39,8 @@ namespace ast::nodes {
         var_ref(std::string_view name) : name(name) {}
 
         void print(size_t depth) const override;
-        CODEGEN() override;
-        ~var_ref() = default;
+        CG_CODEGEN() CG_OVERRIDE;
+        ~var_ref() override = default;
     };
 
     struct raw_var : expression {
@@ -51,7 +50,7 @@ namespace ast::nodes {
         raw_var(std::string_view name) : name(name) {}
 
         void print(size_t depth) const override;
-        CODEGEN() override;
+        CG_CODEGEN() CG_OVERRIDE;
         ~raw_var() = default;
     };
 
@@ -64,7 +63,7 @@ namespace ast::nodes {
             : type(type), value(std::move(value)) {}
 
         void print(size_t depth) const override;
-        CODEGEN() override;
+        CG_CODEGEN() CG_OVERRIDE;
         ~un_op() = default;
     };
 
@@ -78,7 +77,7 @@ namespace ast::nodes {
                 : type(type), left(std::move(left)), right(std::move(right)) {}
 
         void print(size_t depth) const override;
-        CODEGEN() override;
+        CG_CODEGEN() CG_OVERRIDE;
         ~bin_op() = default;
     };
 
@@ -93,7 +92,7 @@ namespace ast::nodes {
                 : lhs(std::move(lhs)), rhs(std::move(rhs)), op(std::make_optional(op)) {}
 
         void print(size_t depth) const override;
-        CODEGEN() override;
+        CG_CODEGEN() CG_OVERRIDE;
         ~assignment() = default;
     };
 
@@ -114,7 +113,7 @@ namespace ast::nodes {
         literal(lit_variant value, uint8_t type_size = 32) noexcept : value(std::move(value)), type_size(type_size) {}
 
         void print(size_t depth) const override;
-        CODEGEN() override;
+        CG_CODEGEN() CG_OVERRIDE;
         ~literal() = default;
     };
 
@@ -129,7 +128,7 @@ namespace ast::nodes {
 
         void print(size_t depth) const override;
         ~return_op() = default;
-        CODEGEN() override;
+        CG_CODEGEN() CG_OVERRIDE;
     };
 
     struct if_statement : statement {
@@ -144,9 +143,9 @@ namespace ast::nodes {
                      std::optional<scope_block> else_body)
             : condition(std::move(condition)), body(std::move(body)), else_body(std::move(else_body)) {}
 
-        ~if_statement() = default;
+        ~if_statement() override = default;
         void print(size_t else_child) const override;
-        CODEGEN() override;
+        CG_CODEGEN() CG_OVERRIDE;
     };
 
     struct loop : statement {
@@ -158,9 +157,9 @@ namespace ast::nodes {
         loop(bool pre_eval, std::unique_ptr<expression> condition, scope_block body)
                 : pre_eval(pre_eval), condition(std::move(condition)), body(std::move(body)) {}
 
-        ~loop() = default;
+        ~loop() override = default;
         void print(size_t depth) const override;
-        CODEGEN() override;
+        CG_CODEGEN() CG_OVERRIDE;
     };
 
     struct for_loop : statement {
@@ -175,9 +174,9 @@ namespace ast::nodes {
                 : init(std::move(init)), condition(std::move(condition)),
                   update(std::move(update)), body(std::move(body)) {}
 
-        ~for_loop() = default;
+        ~for_loop() override = default;
         void print(size_t depth) const override;
-        CODEGEN() override;
+        CG_CODEGEN() CG_OVERRIDE;
     };
 
     struct expression_root : statement {
@@ -186,13 +185,9 @@ namespace ast::nodes {
         expression_root(expression_root&&) noexcept = default;
         expression_root(std::unique_ptr<expression> expr) : expr(std::move(expr)) {}
 
-        ~expression_root() = default;
-        inline void print(size_t depth) const override {
-            expr->print(depth);
-        };
-        inline CODEGEN() override {
-            return expr->generate_code(scope);
-        };
+        ~expression_root() override = default;
+        void print(size_t depth) const override;
+        CG_CODEGEN() CG_OVERRIDE;
     };
 
     // -- Root Node -----------------
@@ -203,9 +198,9 @@ namespace ast::nodes {
 
         root() noexcept = default;
         root(root&&) noexcept = default;
-        ~root() = default;
 
+        ~root() override = default;
         void print(size_t depth = 0) const override;
-        CODEGEN() override;
+        CG_CODEGEN() CG_OVERRIDE;
     };
 }

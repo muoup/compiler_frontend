@@ -1,13 +1,7 @@
 #include <iostream>
-#include <llvm/Support/raw_ostream.h>
 
-#include "llvm-gen/basic_codegen.h"
 #include "ast/interface.h"
 #include "lexer/lex.h"
-
-void generate_machine_code(llvm::Module &module, const ast::nodes::root &root) {
-
-}
 
 int main() {
     const auto* code = R"(
@@ -28,8 +22,6 @@ int main() {
 
     ast.print();
     std::cout << "-------------\n";
-
-    cg::generate_code(ast, llvm::outs());
 
     return 0;
 }
