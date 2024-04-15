@@ -35,5 +35,3 @@ fn main() {
 ```
 
 Most standard forms of control flow are supported, including if-else statements, while/do while loops, and for loops.
-
-```
