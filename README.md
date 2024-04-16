@@ -11,7 +11,7 @@ useful features like pattern matching, destructuring, rich enums, and in-built t
 
 ## Example Code
 ```
-fn main() {
+i8 main() {
     i32 x = 5;
     
     __libc_printf("Hello, World!\n");
@@ -23,13 +23,13 @@ For now until function prototypes / external definitions are implemented, the pr
 '__libc_' is used to denote external functions from the C standard library.
 
 ```
-fn test() {
+void test() {
     for (i32 i = 0; i < 10; i++) {
         __libc_printf("i = %d\n", i);
     }
 }
 
-fn main() {
+i8 main() {
     test();
 }
 ```
