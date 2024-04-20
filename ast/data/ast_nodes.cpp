@@ -208,3 +208,31 @@ void struct_declaration::print(size_t depth) const {
     for (const auto& field : fields)
         field.print(depth + 1);
 }
+
+void match::print(size_t depth) const {
+    print_depth(depth);
+    std::cout << "Match\n";
+
+    print_depth(depth + 1);
+    std::cout << "Matching:\n";
+    match_expr->print(depth + 1);
+
+    for (const auto& case_ : cases) {
+        print_depth(depth + 1);
+        std::cout << "Case\n";
+
+        print_depth(depth + 2);
+        std::cout << "Pattern\n";
+        case_.match_expr->print(depth + 3);
+
+        print_depth(depth + 2);
+        std::cout << "Body\n";
+        case_.body.print(depth + 3);
+    }
+
+    if (default_case) {
+        print_depth(depth + 1);
+        std::cout << "Default\n";
+        default_case->print(depth + 2);
+    }
+}

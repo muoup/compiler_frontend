@@ -53,6 +53,10 @@ value_type bin_op::get_type() const {
     throw std::runtime_error("Unimplemented!");
 }
 
+value_type match::get_type() const {
+    return value_type { intrinsic_types::void_ };
+}
+
 value_type assignment::get_type() const {
     return lhs->get_type();
 }

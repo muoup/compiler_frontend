@@ -65,6 +65,20 @@ lex_cptr ast::assert_token(lex_cptr& ptr, const parse_pred pred) {
     return ptr++;
 }
 
+lex_cptr ast::consume(lex_cptr &ptr, const lex_cptr end) {
+    if (ptr == end)
+        throw std::runtime_error("Unexpected end of input!");
+
+    return ptr++;
+}
+
+lex_cptr ast::peek(const lex_cptr ptr, const lex_cptr end, size_t offset) {
+    if (ptr + offset >= end)
+        throw std::runtime_error("Unexpected end of input!");
+
+    return ptr + offset;
+}
+
 std::optional<lex_cptr> ast::test_token_val(lex_cptr &ptr, const std::string_view val) {
     if (ptr->span != val)
         return std::nullopt;

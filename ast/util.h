@@ -50,6 +50,9 @@ namespace ast {
         return opt.value();
     }
 
+    lex_cptr consume(lex_cptr &ptr, lex_cptr end);
+    lex_cptr peek(lex_cptr ptr, lex_cptr end, size_t offset = 0);
+
     std::optional<lex_cptr> test_token_val(lex_cptr &ptr, std::string_view val);
     std::optional<lex_cptr> test_token_val(lex_cptr &ptr, std::span<const std::string_view> vals);
     std::optional<lex_cptr> test_token_type(lex_cptr &ptr, lex::lex_type type);

@@ -22,7 +22,7 @@ std::vector<nodes::type_instance> pm::parse_method_params(lex_cptr &ptr, const l
 }
 
 std::vector<std::unique_ptr<nodes::expression>> pm::parse_call_params(lex_cptr &ptr, const lex_cptr end) {
-    return parse_split(ptr, end, ",", parse_expression);
+    return parse_split(ptr, end, ",", parse_expr_tree);
 }
 
 nodes::function pm::parse_function(lex_cptr &ptr, const lex_cptr end) {

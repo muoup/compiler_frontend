@@ -2,11 +2,12 @@
 
 #include "statement.h"
 #include "../../lexer/lex.h"
+#include "expression.h"
 
 using namespace ast;
 
 std::vector<nodes::type_instance> pm::parse_struct_types(lex_cptr &ptr, const lex_cptr end) {
-    return parse_split(ptr, end, ";", parse_type_instance);
+    return parse_split(ptr, end, ";", pm::parse_type_instance);
 }
 
 nodes::struct_declaration pm::parse_struct_decl(lex_cptr &ptr, const lex_cptr end) {

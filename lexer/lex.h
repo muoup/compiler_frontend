@@ -37,6 +37,8 @@ namespace lex {
 
         "struct",
 
+        "match", "case", "default",
+
         "as",
 
         "return"

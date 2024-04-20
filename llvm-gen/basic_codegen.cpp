@@ -188,6 +188,10 @@ llvm::Value *if_statement::generate_code(cg::scope_data &scope) const {
     return nullptr;
 }
 
+llvm::Value* match::generate_code(cg::scope_data &scope) const {
+    return nullptr;
+}
+
 llvm::Value* loop::generate_code(cg::scope_data &scope) const {
     const auto pre_init = scope.builder.GetInsertBlock();
 

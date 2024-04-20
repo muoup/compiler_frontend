@@ -4,6 +4,31 @@
 #include "../util.h"
 #include "../data/node_interfaces.h"
 
+namespace ast::nodes {
+    struct literal;
+    struct un_op;
+    struct bin_op;
+    struct method_call;
+    struct var_ref;
+    struct match;
+}
+
 namespace ast::pm {
+    nodes::type_instance parse_type_instance(lex_cptr &ptr, lex_cptr end);
+
+    nodes::un_op parse_unop(lex_cptr &ptr, lex_cptr end);
+
+    std::optional<nodes::bin_op> parse_binop(lex_cptr &ptr, const lex_cptr);
+
+    nodes::method_call parse_method_call(lex_cptr &ptr, lex_cptr end);
+
+    nodes::var_ref parse_variable(lex_cptr &ptr, lex_cptr end);
+
+    std::optional<nodes::literal> parse_literal(lex_cptr &ptr, lex_cptr end);
+
+    nodes::match parse_match(lex_cptr &ptr, lex_cptr end);
+
     std::unique_ptr<nodes::expression> parse_expression(lex_cptr &ptr, const lex_cptr end);
+
+    std::unique_ptr<nodes::expression> parse_expr_tree(lex_cptr &ptr, const lex_cptr end);
 }

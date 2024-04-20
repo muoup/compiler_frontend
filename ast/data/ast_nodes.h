@@ -151,6 +151,28 @@ namespace ast::nodes {
         value_type get_type() const override;
     };
 
+    struct match : expression {
+        struct match_case {
+            std::unique_ptr<expression> match_expr;
+            scope_block body;
+        };
+
+        std::unique_ptr<expression> match_expr;
+        std::vector<match_case> cases;
+        std::unique_ptr<scope_block> default_case;
+
+        match(match&&) noexcept = default;
+        match() = default;
+        match(std::unique_ptr<expression> match_expr, std::vector<match_case> cases)
+                : match_expr(std::move(match_expr)), cases(std::move(cases)) {}
+
+        ~match() = default;
+        void print(size_t depth) const override;
+        CODEGEN() override;
+
+        value_type get_type() const override;
+    };
+
 //    struct accessor : bin_op {
 //        bool is_arrow;
 //        std::unique_ptr<expression> left;
