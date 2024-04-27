@@ -7,6 +7,21 @@ value_type method_call::get_type() const {
     return function_types.at(method_name);
 }
 
+value_type scope_block::get_type() const {
+    for (const auto &stmt : statements) {
+        auto *ret = dynamic_cast<const return_op*>(stmt.get());
+
+        if (ret) {
+            if (!ret->val)
+                return value_type::void_type();
+
+            return ret->val->get_type();
+        }
+    }
+
+    return value_type::void_type();
+}
+
 value_type initialization::get_type() const {
     return variable.type;
 }
@@ -54,7 +69,13 @@ value_type bin_op::get_type() const {
 }
 
 value_type match::get_type() const {
-    return value_type { intrinsic_types::void_ };
+    if (default_case)
+        return default_case->get_type();
+
+    if (cases.empty())
+        return value_type::void_type();
+
+    return cases.front().body.get_type();
 }
 
 value_type assignment::get_type() const {

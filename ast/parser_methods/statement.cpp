@@ -14,25 +14,25 @@ std::unique_ptr<nodes::statement> pm::parse_statement(lex_cptr &ptr, lex_cptr en
     if (ptr == end)
         return nullptr;
 
-    auto next = peek(ptr, end);
+    auto next = peek(ptr, end)->span;
 
-    if (next->span == "if") {
+    if (next == "if") {
         return std::make_unique<nodes::if_statement>(parse_if_statement(ptr, end));
-    } else if (next->span == "while" || next->span == "do") {
+    } else if (next == "while" || next == "do") {
         return std::make_unique<nodes::loop>(parse_loop(ptr, end));
-    } else if (next->span == "for") {
+    } else if (next == "for") {
         return std::make_unique<nodes::for_loop>(parse_for_loop(ptr, end));
-    } else if (next->span == "return") {
+    } else if (next == "return") {
         if (++ptr == end)
             return std::make_unique<nodes::return_op>();
 
         return std::make_unique<nodes::return_op>(
-                parse_expr_tree(ptr, end)
+            parse_expr_tree(ptr, end)
         );
     }
 
     return std::make_unique<nodes::expression_root>(
-            parse_expr_tree(ptr, end)
+        parse_expr_tree(ptr, end)
     );
 }
 
@@ -40,7 +40,7 @@ nodes::if_statement pm::parse_if_statement(lex_cptr &ptr, lex_cptr end) {
     assert_token_val(ptr, "if");
 
     return nodes::if_statement {
-            parse_between(ptr, "(", parse_expr_tree),
+        parse_between(ptr, "(", parse_expr_tree),
         parse_body(ptr, end),
         test_token_val(ptr, "else") ?
             std::make_optional<nodes::scope_block>(parse_body(ptr, end)) :

@@ -48,6 +48,10 @@ namespace ast::nodes {
         bool is_intrinsic() const {
             return std::holds_alternative<intrinsic_types>(type);
         };
+
+        static value_type void_type() {
+            return { intrinsic_types::void_ };
+        }
     };
 
     struct type_instance {

@@ -23,6 +23,9 @@ std::unique_ptr<nodes::expression> pm::parse_expression(lex_cptr &ptr, const lex
     if (peek(ptr, end)->span == "(")
         return parse_between(ptr, parse_expr_tree);
 
+    if (peek(ptr, end)->span == "{")
+        return std::make_unique<nodes::scope_block>(parse_body(ptr, end));
+
     if (peek(ptr, end)->span == "match")
         return std::make_unique<nodes::match>(parse_match(ptr, end));
 

@@ -4,6 +4,8 @@
 #include "LLVM/IR/Value.h"
 
 namespace ast::nodes {
+    // -- Expression Nodes ----------
+
     /**
      *  Code Block: Non-Abstract Data Type
      *  ----------------------------------
@@ -11,7 +13,7 @@ namespace ast::nodes {
      *  within will have their own innermost scope but will
      *  also be able to reference any outer scopes.
      */
-    struct scope_block : codegen_node {
+    struct scope_block : expression {
         using scope_stmts = std::vector<std::unique_ptr<statement>>;
         scope_stmts statements;
 
@@ -23,53 +25,9 @@ namespace ast::nodes {
         ~scope_block() = default;
         void print(size_t depth) const override;
         llvm::BasicBlock* generate_code(cg::scope_data &scope) const override;
+
+        value_type get_type() const override;
     };
-
-    // -- Program Level Nodes -------
-    /**
-     *  Function: Non-Abstract Data Type
-     *  -------------------------------
-     *  A function represents a callable block of code at the top level of the program.
-     *  Functionally this acts very similar to a statement, but differs in how it must
-     *  be implemented into a program. In the future, if functions are able to be implemented
-     *  within a function, the line between a function and a statement will blur. But for now,
-     *  functions are a top-level construct.
-     */
-    struct function : program_level_stmt {
-        value_type return_type;
-        std::string_view fn_name;
-        std::vector<type_instance> param_types;
-        scope_block body;
-
-        function(function&&) noexcept = default;
-        function(value_type return_type, std::string_view method_name, std::vector<type_instance> param_types, scope_block body)
-                : return_type(return_type), fn_name(method_name), param_types(std::move(param_types)), body(std::move(body)) {}
-
-        ~function() = default;
-        void print(size_t depth) const override;
-        CODEGEN() override;
-    };
-
-    /**
-     *  Struct Declaration: Non-Abstract Data Type
-     *  ------------------------------------------
-     *  A struct defines a new type, containing a list of fields.
-     *  This is used to define new types in the program.
-     */
-    struct struct_declaration : program_level_stmt {
-        std::string_view name;
-        std::vector<type_instance> fields;
-
-        struct_declaration(struct_declaration&&) noexcept = default;
-        struct_declaration(std::string_view name, std::vector<type_instance> fields)
-            : name(name), fields(std::move(fields)) {}
-
-        ~struct_declaration() = default;
-        void print(size_t depth) const override;
-        CODEGEN() override;
-    };
-
-    // -- Expression Nodes ----------
 
     struct method_call : expression {
         std::string_view method_name;
@@ -309,6 +267,51 @@ namespace ast::nodes {
         inline CODEGEN() override {
             return expr->generate_code(scope);
         };
+    };
+
+    // -- Program Level Nodes -------
+
+    /**
+     *  Function: Non-Abstract Data Type
+     *  -------------------------------
+     *  A function represents a callable block of code at the top level of the program.
+     *  Functionally this acts very similar to a statement, but differs in how it must
+     *  be implemented into a program. In the future, if functions are able to be implemented
+     *  within a function, the line between a function and a statement will blur. But for now,
+     *  functions are a top-level construct.
+     */
+    struct function : program_level_stmt {
+        value_type return_type;
+        std::string_view fn_name;
+        std::vector<type_instance> param_types;
+        scope_block body;
+
+        function(function&&) noexcept = default;
+        function(value_type return_type, std::string_view method_name, std::vector<type_instance> param_types, scope_block body)
+                : return_type(return_type), fn_name(method_name), param_types(std::move(param_types)), body(std::move(body)) {}
+
+        ~function() = default;
+        void print(size_t depth) const override;
+        CODEGEN() override;
+    };
+
+    /**
+     *  Struct Declaration: Non-Abstract Data Type
+     *  ------------------------------------------
+     *  A struct defines a new type, containing a list of fields.
+     *  This is used to define new types in the program.
+     */
+    struct struct_declaration : program_level_stmt {
+        std::string_view name;
+        std::vector<type_instance> fields;
+
+        struct_declaration(struct_declaration&&) noexcept = default;
+        struct_declaration(std::string_view name, std::vector<type_instance> fields)
+                : name(name), fields(std::move(fields)) {}
+
+        ~struct_declaration() = default;
+        void print(size_t depth) const override;
+        CODEGEN() override;
     };
 
     // -- Root Node -----------------

@@ -189,6 +189,59 @@ llvm::Value *if_statement::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* match::generate_code(cg::scope_data &scope) const {
+    auto switch_start = llvm::BasicBlock::Create(scope.context, "switch_start", scope.current_function);
+
+    std::vector<llvm::BasicBlock*> cond_blocks;
+    cond_blocks.reserve(cases.size());
+
+    for (const auto &case_ : cases) {
+        cond_blocks.emplace_back(case_.body.generate_code(scope));
+    }
+
+    auto *default_block = default_case ?
+                          default_case->generate_code(scope) :
+                          nullptr;
+
+    auto merge_block = llvm::BasicBlock::Create(scope.context, "merge", scope.current_function);
+
+    for (auto *block : cond_blocks) {
+        scope.builder.SetInsertPoint(block);
+        scope.builder.CreateBr(merge_block);
+    }
+
+    if (default_block) {
+        scope.builder.SetInsertPoint(default_block);
+        scope.builder.CreateBr(merge_block);
+    }
+
+    scope.builder.SetInsertPoint(switch_start);
+
+    default_block = default_block ? default_block : merge_block;
+
+    auto *cmp = static_cast<llvm::AllocaInst*>(match_expr->generate_code(scope));
+    auto *cmp_eval = scope.builder.CreateLoad(cmp->getAllocatedType(), cmp);
+
+    auto *switch_inst = scope.builder.CreateSwitch(cmp_eval, default_block, cases.size());
+
+    for (auto i = 0; i < cases.size(); ++i) {
+        auto *case_ = cases[i].match_expr->generate_code(scope);
+        auto *case_block = cond_blocks[i];
+        auto *case_const = llvm::dyn_cast<llvm::ConstantInt>(case_);
+
+        if (!case_const)
+            throw std::runtime_error("Match case must be a constant integer.");
+        if (!case_block)
+            throw std::runtime_error("Match case block must be a valid block.");
+
+        switch_inst->addCase(
+                case_const,
+                case_block
+        );
+    }
+
+    scope.builder.CreateBr(default_block);
+
+    scope.builder.SetInsertPoint(merge_block);
     return nullptr;
 }
 
@@ -251,7 +304,7 @@ llvm::BasicBlock* scope_block::generate_code(cg::scope_data &scope) const {
     for (const auto &stmt : statements)
         stmt->generate_code(in_scope_block);
 
-    return in_scope_block.builder.GetInsertBlock();
+    return in_scope_block.entry;
 }
 
 llvm::Value* function::generate_code(cg::scope_data &scope) const {

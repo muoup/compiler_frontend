@@ -215,7 +215,7 @@ void match::print(size_t depth) const {
 
     print_depth(depth + 1);
     std::cout << "Matching:\n";
-    match_expr->print(depth + 1);
+    match_expr->print(depth + 2);
 
     for (const auto& case_ : cases) {
         print_depth(depth + 1);

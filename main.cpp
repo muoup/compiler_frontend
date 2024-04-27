@@ -6,10 +6,6 @@
 #include "ast/interface.h"
 #include "lexer/lex.h"
 
-void generate_machine_code(llvm::Module &module, const ast::nodes::root &root) {
-
-}
-
 int main() {
 //    const auto* code = R"(
 //        struct test_struct {
@@ -32,11 +28,11 @@ int main() {
 
     const auto *code = R"(
         fn main() -> i8 {
-            i8 i = 0;
+            i32 i = 0;
             match i {
-                case 0 { __libc_printf("0"); },
-                case 1 { __libc_printf("1"); },
-                default { __libc_printf("default"); }
+                case 0 { return 1; },
+                case 1 { return 2; },
+                case 2 { return 3; },
             };
         }
     )";
@@ -48,7 +44,7 @@ int main() {
     std::cout << "-------------\n";
 
     // The AST sometimes prints after the codegen, so we need to flush the output stream.
-//    cg::generate_code(ast, llvm::outs());
+    cg::generate_code(ast, llvm::outs());
 
     return 0;
 }

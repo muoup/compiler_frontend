@@ -35,7 +35,7 @@ nodes::function pm::parse_function(lex_cptr &ptr, const lex_cptr end) {
 
     auto ret_type = test_token_val(ptr, "->") ?
             parse_value_type(ptr, end) :
-            nodes::value_type { nodes::intrinsic_types::void_ };
+            nodes::value_type::void_type();
 
     function_types.emplace(function_name, ret_type);
 
