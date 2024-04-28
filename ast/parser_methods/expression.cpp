@@ -29,10 +29,10 @@ std::unique_ptr<nodes::expression> pm::parse_expression(lex_cptr &ptr, const lex
     if (peek(ptr, end)->span == "match")
         return std::make_unique<nodes::match>(parse_match(ptr, end));
 
-    if (is_variable_identifier(ptr) && peek(ptr, end, 1)->type == lex::lex_type::IDENTIFIER)
+    if (is_variable_identifier(ptr) && try_peek_type(ptr, end, lex::lex_type::IDENTIFIER, 1))
         return std::make_unique<nodes::initialization>(parse_type_instance(ptr, end));
 
-    if (peek(ptr, end)->type == lex::lex_type::IDENTIFIER && peek(ptr, end, 1)->span == "(")
+    if (peek(ptr, end)->type == lex::lex_type::IDENTIFIER && try_peek_val(ptr, end, "(", 1))
         return std::make_unique<nodes::method_call>(parse_method_call(ptr, end));
 
     if (peek(ptr, end)->type == lex::lex_type::IDENTIFIER)
@@ -43,68 +43,54 @@ std::unique_ptr<nodes::expression> pm::parse_expression(lex_cptr &ptr, const lex
 
 std::unique_ptr<nodes::expression> pm::parse_expr_tree(lex_cptr &ptr, const lex_cptr end) {
     std::stack<std::unique_ptr<nodes::expression>> expr_stack;
-    std::stack<std::unique_ptr<nodes::bin_op>> binop_stack;
+    std::stack<nodes::bin_op_type> binop_stack;
 
     const auto combine_back = [&expr_stack, &binop_stack] {
-        auto& top_op = binop_stack.top();
-
-        top_op->right = std::move(expr_stack.top());
-        expr_stack.pop();
-
-        top_op->left = std::move(expr_stack.top());
-        expr_stack.pop();
-
-        expr_stack.emplace(std::move(top_op));
+        nodes::bin_op_type top_op = binop_stack.top();
         binop_stack.pop();
+        std::unique_ptr<nodes::expression> r_expr = std::move(expr_stack.top());
+        expr_stack.pop();
+        std::unique_ptr<nodes::expression> l_expr = std::move(expr_stack.top());
+        expr_stack.pop();
+
+        expr_stack.emplace(
+            std::make_unique<nodes::bin_op>(
+                    create_bin_op(std::move(l_expr), std::move(r_expr), top_op)
+            )
+        );
     };
 
     expr_stack.emplace(parse_expression(ptr, end));
 
     while (ptr < end) {
-        if (const auto tok = test_token_type(ptr, lex::lex_type::ASSN_SYMBOL)) {
-            while (!binop_stack.empty())
-                combine_back();
-
+        if (peek(ptr, end)->type == lex::lex_type::ASSN_SYMBOL) {
+            auto assn_type = parse_assn(end, ptr);
             auto lhs = std::move(expr_stack.top());
-            expr_stack.pop();
-
             auto rhs = parse_expr_tree(ptr, end);
-            const auto assn_str = tok.value()->span;
-
-            if (assn_str.size() == 1) {
-                return std::make_unique<nodes::assignment>(std::move(lhs), std::move(rhs));
-            }
-
-            auto binop = get_binop(std::string_view { assn_str.begin(), assn_str.end() - 1 });
-
-            if (!binop)
-                throw std::runtime_error("Invalid assignment operator");
 
             return std::make_unique<nodes::assignment>(
-                std::move(lhs),
-                std::move(rhs),
-                binop.value()
+                    std::move(lhs),
+                    std::move(rhs),
+                    assn_type
             );
         }
 
-        auto binop = parse_binop(ptr, end);
+        auto bin_op = parse_binop(ptr, end);
 
-        if (binop == std::nullopt)
+        if (bin_op == std::nullopt)
             break;
 
-        auto r_op = std::make_unique<nodes::bin_op>(std::move(binop.value()));
-
-        while (!binop_stack.empty() && get_prec(*r_op) <= get_prec(*binop_stack.top()))
+        while (!binop_stack.empty() && get_prec(*bin_op) <= get_prec(binop_stack.top()))
             combine_back();
 
         expr_stack.emplace(parse_expression(ptr, end));
-        binop_stack.emplace(std::move(r_op));
+        binop_stack.emplace(*bin_op);
     }
 
     while (!binop_stack.empty())
         combine_back();
 
-    return std::move(expr_stack.top());
+    return pm::load_if_necessary(std::move(expr_stack.top()));
 }
 
 nodes::un_op pm::parse_unop(lex_cptr &ptr, const lex_cptr end) {
@@ -122,22 +108,28 @@ nodes::un_op pm::parse_unop(lex_cptr &ptr, const lex_cptr end) {
     };
 }
 
-std::optional<nodes::bin_op> pm::parse_binop(lex_cptr &ptr, const lex_cptr) {
+std::optional<nodes::bin_op_type> pm::parse_binop(lex_cptr &ptr, const lex_cptr) {
     auto op = test_token_type(ptr, lex::lex_type::EXPR_SYMBOL);
 
     if (!op)
         return std::nullopt;
 
-    auto op_type = get_binop(op.value()->span);
+    return get_binop((*op)->span);
+}
 
-    if (!op_type)
+std::optional<nodes::bin_op_type> pm::parse_assn(const ast::lex_cptr, ast::lex_cptr &ptr) {
+    auto type = assert_token_type(ptr, lex::lex_type::ASSN_SYMBOL)->span;
+
+    if (type.size() == 1)
         return std::nullopt;
 
-    return nodes::bin_op {
-            op_type.value(),
-            nullptr,
-            nullptr
-    };
+    auto op = type.substr(0, 1);
+    auto bin_op = get_binop(op);
+
+    if (!bin_op)
+        throw std::runtime_error("Invalid assignment operator");
+
+    return bin_op;
 }
 
 std::optional<nodes::literal> pm::parse_literal(lex_cptr &ptr, const lex_cptr) {

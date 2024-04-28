@@ -50,7 +50,7 @@ llvm::Value* cg::varargs_cast(llvm::Value *val, const scope_data &scope) {
 llvm::Value* cg::load_expr(const std::unique_ptr<nodes::expression> &expr, cg::scope_data &scope) {
     auto val = expr->generate_code(scope);
 
-    if (dynamic_cast<const nodes::literal*>(expr.get()) == nullptr) {
+    if (dynamic_cast<const nodes::var_ref*>(expr.get()) == nullptr) {
         auto type = expr->get_type();
 
         val = scope.builder.CreateLoad(cg::get_llvm_type(type, scope), val);
@@ -87,9 +87,8 @@ llvm::Value *generate_comparison(const pseudo_bin_op &ref, cg::scope_data &scope
 }
 
 llvm::Value* generate_basic_op(const pseudo_bin_op &ref, cg::scope_data &scope) {
-    auto *lhs = load_expr(ref.left, scope);
-    auto *rhs = load_expr(ref.right, scope);
-    rhs = attempt_cast(rhs, lhs->getType(), scope);
+    auto *lhs = ref.left->generate_code(scope);
+    auto *rhs = ref.right->generate_code(scope);
 
     auto mapped_type = pm::basic_binop_map.at(ref.type);
 
@@ -98,7 +97,7 @@ llvm::Value* generate_basic_op(const pseudo_bin_op &ref, cg::scope_data &scope) 
     return scope.builder.CreateBinOp(bin_op_type, lhs, rhs);
 }
 
-llvm::Value* cg::generate_accessor(const std::unique_ptr<ast::nodes::expression> &left, const std::unique_ptr<ast::nodes::expression> &right, bool is_arrow, cg::scope_data &scope) {
+llvm::Value* cg::generate_accessor(const std::unique_ptr<ast::nodes::expression> &left, const std::unique_ptr<ast::nodes::expression> &right, cg::scope_data &scope) {
     auto *l_ref = dynamic_cast<const nodes::var_ref*>(left.get());
     auto *r_ref = dynamic_cast<const nodes::var_ref*>(right.get());
 
@@ -107,9 +106,7 @@ llvm::Value* cg::generate_accessor(const std::unique_ptr<ast::nodes::expression>
 
     auto get_var = scope.get_variable(l_ref->name);
     auto var_alloc = get_var.var_allocation;
-    llvm::Value *var_val = is_arrow ?
-                           (llvm::Value*) scope.builder.CreateLoad(var_alloc->getAllocatedType(), var_alloc) :
-                           (llvm::Value*) get_var.var_allocation;
+    llvm::Value *var_val = (llvm::Value*) get_var.var_allocation;
 
     if (get_var.struct_type == nullptr)
         throw std::runtime_error("Invalid left side of accessor.");
@@ -134,8 +131,8 @@ llvm::Value* cg::generate_bin_op(const std::unique_ptr<ast::nodes::expression> &
     if (pm::i_cmp_map.contains(type) || pm::f_cmp_map.contains(type))
         return generate_comparison(ref, scope);
 
-    if (type == nodes::bin_op_type::dot || type == nodes::bin_op_type::arrow)
-        return generate_accessor(left, right, type == nodes::bin_op_type::arrow, scope);
+    if (type == nodes::bin_op_type::acc)
+        return generate_accessor(left, right, scope);
 
     throw std::runtime_error("Invalid binary operator.");
 }

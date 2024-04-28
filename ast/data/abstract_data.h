@@ -21,7 +21,7 @@ namespace ast::nodes {
 
         eq, neq, lt, gt, lte, gte,
 
-        dot, arrow
+        acc, accdf,
     };
 
     enum class un_op_type {
@@ -40,9 +40,15 @@ namespace ast::nodes {
         NON_INTRINSIC
     };
 
+    struct binary_operation {
+        std::optional<bin_op_type> type;
+        bool is_assignment;
+    };
+
     struct value_type {
         std::variant<intrinsic_types, std::string_view> type;
         bool is_const, is_volatile;
+        int pointer_depth;
 
         void print(size_t depth) const;
         bool is_intrinsic() const {
@@ -51,6 +57,18 @@ namespace ast::nodes {
 
         static value_type void_type() {
             return { intrinsic_types::void_ };
+        }
+
+        value_type pointer_to() const {
+            auto temp = *this;
+            temp.pointer_depth++;
+            return temp;
+        }
+
+        value_type dereference() const {
+            auto temp = *this;
+            temp.pointer_depth--;
+            return temp;
         }
     };
 

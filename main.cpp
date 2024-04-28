@@ -28,12 +28,10 @@ int main() {
 
     const auto *code = R"(
         fn main() -> i8 {
-            i32 i = 0;
-            match i {
-                case 0 { return 1; },
-                case 1 { return 2; },
-                case 2 { return 3; },
-            };
+            f32 i = 10;
+            i32 j = 20 + i;
+
+            __libc_printf("%d", j);
         }
     )";
 

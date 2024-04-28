@@ -18,7 +18,9 @@ namespace ast::pm {
 
     nodes::un_op parse_unop(lex_cptr &ptr, lex_cptr end);
 
-    std::optional<nodes::bin_op> parse_binop(lex_cptr &ptr, const lex_cptr);
+    std::optional<nodes::bin_op_type> parse_binop(lex_cptr &ptr, const lex_cptr);
+
+    std::optional<nodes::bin_op_type> parse_assn(const ast::lex_cptr, ast::lex_cptr &ptr);
 
     nodes::method_call parse_method_call(lex_cptr &ptr, lex_cptr end);
 

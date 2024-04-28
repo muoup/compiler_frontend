@@ -37,10 +37,51 @@ namespace ast::pm {
         return "OPERATOR NOT FOUND";
     }
 
-    int16_t get_prec(const nodes::bin_op& op) {
-        if (const auto find = binop_prec.find(op.type); find != binop_prec.end())
+    int16_t get_prec(const nodes::bin_op_type& op) {
+        if (const auto find = binop_prec.find(op); find != binop_prec.end())
             return find->second;
 
         return 0;
+    }
+
+    std::unique_ptr<nodes::expression> load_if_necessary(std::unique_ptr<nodes::expression> node) {
+        if (dynamic_cast<nodes::var_ref*>(node.get()) != nullptr)
+            return std::make_unique<nodes::load>(std::move(node));
+
+        return node;
+    }
+
+    nodes::bin_op create_bin_op(std::unique_ptr<nodes::expression> left, std::unique_ptr<nodes::expression> right, nodes::bin_op_type type) {
+        const auto l_type = left->get_type();
+        const auto r_type = right->get_type();
+
+        if (type != nodes::bin_op_type::acc && type != nodes::bin_op_type::accdf) {
+            left = load_if_necessary(std::move(left));
+            right = load_if_necessary(std::move(right));
+        } else if (type == nodes::bin_op_type::accdf){
+            left = std::make_unique<nodes::load>(std::move(left));
+        }
+
+        if (l_type.type == r_type.type) {
+            return nodes::bin_op {
+                    type,
+                    std::move(left),
+                    std::move(right),
+            };
+        }
+
+        if (!l_type.is_intrinsic() || !r_type.is_intrinsic())
+            throw std::runtime_error("Non-intrinsic types cannot be casted (yet)!");
+
+        return nodes::bin_op {
+            type,
+            std::move(left),
+            std::make_unique<nodes::cast>(
+                std::move(right),
+                nodes::value_type {
+                    l_type
+                }
+            )
+        };
     }
 }

@@ -27,7 +27,7 @@ value_type initialization::get_type() const {
 }
 
 value_type var_ref::get_type() const {
-    return type.value();
+    return type->pointer_to();
 }
 
 value_type un_op::get_type() const {
@@ -59,7 +59,7 @@ value_type get_accessor_type(const bin_op &self) {
 }
 
 value_type bin_op::get_type() const {
-    if (type == bin_op_type::dot || type == bin_op_type::arrow)
+    if (type == bin_op_type::acc)
         return get_accessor_type(*this);
 
     if (left->get_type().is_intrinsic() && right->get_type().is_intrinsic())
@@ -93,8 +93,19 @@ value_type literal::get_type() const {
         case CHAR:
             return { intrinsic_types::char_ };
         case STRING:
-            throw std::runtime_error("Unimplemented!");
+            return value_type {
+                intrinsic_types::char_,
+                1
+            };
         default:
             std::unreachable();
     }
+}
+
+value_type cast::get_type() const {
+    return cast_type;
+}
+
+value_type load::get_type() const {
+    return expr->get_type().dereference();
 }

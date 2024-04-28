@@ -101,6 +101,24 @@ llvm::Value* literal::generate_code(cg::scope_data &scope) const {
     }
 }
 
+llvm::Value* cast::generate_code(cg::scope_data &scope) const {
+    auto *expr_val = expr->generate_code(scope);
+    auto *llvm_cast_type = get_llvm_type(this->cast_type, scope);
+
+    return attempt_cast(expr_val, llvm_cast_type, scope);
+}
+
+llvm::Value* load::generate_code(cg::scope_data &scope) const {
+    auto *val = expr->generate_code(scope);
+
+    if (!val->getType()->isPointerTy())
+        throw std::runtime_error("Cannot dereference non-pointer type.");
+
+    auto *new_type = get_llvm_type(expr->get_type().dereference(), scope);
+
+    return scope.builder.CreateLoad(new_type, val);
+}
+
 llvm::Value* initialization::generate_code(cg::scope_data &scope) const {
     auto type = get_llvm_type(variable.type, scope);
 
@@ -119,7 +137,7 @@ llvm::Value* method_call::generate_code(cg::scope_data &scope) const {
     std::vector<llvm::Value*> args;
 
     for (auto i = 0; i < arguments.size(); ++i) {
-        auto param_val = cg::load_expr(arguments[i], scope);
+        auto param_val = arguments[i]->generate_code(scope);
 
         if (i < func->arg_size())
             param_val = attempt_cast(param_val, func->getArg(i)->getType(), scope);

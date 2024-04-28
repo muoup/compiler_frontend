@@ -148,6 +148,21 @@ void un_op::print(const size_t depth) const {
     value->print(depth + 1);
 }
 
+void cast::print(size_t depth) const {
+    print_depth(depth);
+
+    std::cout << "Implicit Cast\n";
+    cast_type.print(depth + 1);
+    expr->print(depth + 1);
+}
+
+void load::print(size_t depth) const {
+    print_depth(depth);
+
+    std::cout << "Implicit Dereference\n";
+    expr->print(depth + 1);
+}
+
 void literal::print(const size_t depth) const {
     print_depth(depth);
 

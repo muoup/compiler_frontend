@@ -159,8 +159,8 @@ namespace ast::nodes {
         assignment(assignment&&) noexcept = default;
         assignment(std::unique_ptr<expression> lhs, std::unique_ptr<expression> rhs)
                 : lhs(std::move(lhs)), rhs(std::move(rhs)) {}
-        assignment(std::unique_ptr<expression> lhs, std::unique_ptr<expression> rhs, bin_op_type op)
-                : lhs(std::move(lhs)), rhs(std::move(rhs)), op(std::make_optional(op)) {}
+        assignment(std::unique_ptr<expression> lhs, std::unique_ptr<expression> rhs, std::optional<bin_op_type> op)
+                : lhs(std::move(lhs)), rhs(std::move(rhs)), op(op) {}
 
         void print(size_t depth) const override;
         CODEGEN() override;
@@ -188,6 +188,32 @@ namespace ast::nodes {
         void print(size_t depth) const override;
         CODEGEN() override;
         ~literal() = default;
+
+        value_type get_type() const override;
+    };
+
+    struct cast : expression {
+        std::unique_ptr<expression> expr;
+        value_type cast_type;
+
+        cast(cast&&) noexcept = default;
+        cast(std::unique_ptr<expression> expr, value_type cast_type)
+            : expr(std::move(expr)), cast_type(cast_type) {}
+
+        void print(size_t depth) const override;
+        CODEGEN() override;
+
+        value_type get_type() const override;
+    };
+
+    struct load : expression {
+        std::unique_ptr<expression> expr;
+
+        load(load&&) noexcept = default;
+        load(std::unique_ptr<expression> expr) : expr(std::move(expr)) {}
+
+        void print(size_t depth) const override;
+        CODEGEN() override;
 
         value_type get_type() const override;
     };

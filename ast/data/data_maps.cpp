@@ -5,8 +5,7 @@ using namespace ast;
 using namespace nodes;
 
 const std::unordered_map<bin_op_type, uint16_t> pm::binop_prec {
-    { bin_op_type::dot, 1 },
-    { bin_op_type::arrow, 1 },
+    { bin_op_type::acc,   1 },
     { bin_op_type::l_or,  2  },
     { bin_op_type::l_and, 3  },
     { bin_op_type::l_xor, 3  },
@@ -49,8 +48,8 @@ const std::unordered_map<std::string_view, bin_op_type> pm::binop_type_map {
     { "<<", bin_op_type::shl   },
     { ">>", bin_op_type::shr   },
     { "**", bin_op_type::pow   },
-    { ".", bin_op_type::dot   },
-    { "->", bin_op_type::arrow },
+    { ".",  bin_op_type::acc   },
+    { "->", bin_op_type::accdf },
 };
 
 const std::unordered_map<std::string_view, un_op_type> pm::unop_type_map {

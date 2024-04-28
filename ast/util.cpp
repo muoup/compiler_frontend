@@ -79,6 +79,14 @@ lex_cptr ast::peek(const lex_cptr ptr, const lex_cptr end, size_t offset) {
     return ptr + offset;
 }
 
+bool ast::try_peek_type(const lex_cptr ptr, const lex_cptr end, const lex::lex_type type, const size_t offset) {
+    return (ptr + offset) <= end && (ptr + offset)->type == type;
+}
+
+bool ast::try_peek_val(const lex_cptr ptr, const lex_cptr end, const std::string_view val, const size_t offset) {
+    return (ptr + offset) <= end && (ptr + offset)->span == val;
+}
+
 std::optional<lex_cptr> ast::test_token_val(lex_cptr &ptr, const std::string_view val) {
     if (ptr->span != val)
         return std::nullopt;
