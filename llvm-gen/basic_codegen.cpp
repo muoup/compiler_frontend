@@ -119,6 +119,10 @@ llvm::Value* load::generate_code(cg::scope_data &scope) const {
     return scope.builder.CreateLoad(new_type, val);
 }
 
+llvm::Value* expression_shield::generate_code(cg::scope_data &scope) const {
+    return expr->generate_code(scope);
+}
+
 llvm::Value* initialization::generate_code(cg::scope_data &scope) const {
     auto type = get_llvm_type(variable.type, scope);
 
@@ -236,10 +240,8 @@ llvm::Value* match::generate_code(cg::scope_data &scope) const {
 
     default_block = default_block ? default_block : merge_block;
 
-    auto *cmp = static_cast<llvm::AllocaInst*>(match_expr->generate_code(scope));
-    auto *cmp_eval = scope.builder.CreateLoad(cmp->getAllocatedType(), cmp);
-
-    auto *switch_inst = scope.builder.CreateSwitch(cmp_eval, default_block, cases.size());
+    auto *cmp = match_expr->generate_code(scope);
+    auto *switch_inst = scope.builder.CreateSwitch(cmp, default_block, cases.size());
 
     for (auto i = 0; i < cases.size(); ++i) {
         auto *case_ = cases[i].match_expr->generate_code(scope);
@@ -382,13 +384,6 @@ llvm::Value* un_op::generate_code(cg::scope_data &scope) const {
         using namespace ast::nodes;
         case un_op_type::log_not:
             return scope.builder.CreateNot(val);
-        case un_op_type::deref:
-            if (!val->getType()->isPointerTy())
-                throw std::runtime_error("Cannot dereference non-pointer type.");
-
-            return scope.builder.CreateLoad(val->getType(), val);
-        case un_op_type::addr_of:
-            return value->generate_code(scope);
         case un_op_type::bit_not:
             if (!val->getType()->isIntegerTy())
                 throw std::runtime_error("Cannot perform bitwise NOT on non-integer type.");
@@ -421,11 +416,6 @@ llvm::Value* assignment::generate_code(cg::scope_data &scope) const {
 
     if (!l_val->getType()->isPointerTy())
         throw std::runtime_error("Cannot assign to non-pointer type.");
-
-    auto type = get_llvm_type(lhs->get_type(), scope);
-
-    if (r_val->getType() != type)
-        r_val = attempt_cast(r_val, type, scope);
 
     return scope.builder.CreateStore(
             r_val,

@@ -47,33 +47,11 @@ llvm::Value* cg::varargs_cast(llvm::Value *val, const scope_data &scope) {
     throw std::runtime_error("For now, varargs parameters are limited to i32 and pointers.");
 }
 
-llvm::Value* cg::load_expr(const std::unique_ptr<nodes::expression> &expr, cg::scope_data &scope) {
-    auto val = expr->generate_code(scope);
-
-    if (dynamic_cast<const nodes::var_ref*>(expr.get()) == nullptr) {
-        auto type = expr->get_type();
-
-        val = scope.builder.CreateLoad(cg::get_llvm_type(type, scope), val);
-    }
-
-    return val;
-}
-
-struct sides_read {
-    llvm::Value *lhs, *rhs;
-};
-sides_read read_sides(const pseudo_bin_op &ref, cg::scope_data &scope) {
-    auto lhs = load_expr(ref.left, scope);
-    auto rhs = load_expr(ref.right, scope);
-
-    return sides_read { lhs, attempt_cast(rhs, lhs->getType(), scope) };
-}
-
 llvm::Value *generate_comparison(const pseudo_bin_op &ref, cg::scope_data &scope) {
-    auto [lhs, rhs] = read_sides(ref, scope);
-    const auto is_fp = lhs->getType()->isFloatingPointTy();
+    auto lhs = ref.left->generate_code(scope);
+    auto rhs = ref.right->generate_code(scope);
 
-    if (is_fp) {
+    if (ref.left->get_type().is_fp()) {
         return scope.builder.CreateFCmp(
                 llvm::CmpInst::Predicate::FCMP_OEQ,
                 lhs, rhs

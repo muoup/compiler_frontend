@@ -28,10 +28,11 @@ int main() {
 
     const auto *code = R"(
         fn main() -> i8 {
-            f32 i = 10;
-            i32 j = 20 + i;
+            i32 i = 10;
+            i32 *ptr = &i;
+            *ptr = 20;
 
-            __libc_printf("%d", j);
+            __libc_printf("%d", i);
         }
     )";
 

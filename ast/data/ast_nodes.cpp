@@ -81,18 +81,24 @@ void value_type::print(size_t depth) const {
     std::cout << "Type: ";
 
     if (!std::holds_alternative<intrinsic_types>(type)) {
-        std::cout << std::get<std::string_view>(type) << "\n";
+        std::cout << std::get<std::string_view>(type);
         return;
-    }
+    } else {
 
-    auto intrinsic = std::get<intrinsic_types>(type);
+        auto intrinsic = std::get<intrinsic_types>(type);
 
-    for (const auto &[key, val] : pm::intrin_map) {
-        if (val == intrinsic) {
-            std::cout << "Intrinsic Type (" << key << ")\n";
-            break;
+        for (const auto &[key, val]: pm::intrin_map) {
+            if (val == intrinsic) {
+                std::cout << "" << key;
+                break;
+            }
         }
     }
+
+    for (int _ = 0; _ < pointer_depth; ++_)
+        std::cout << "*";
+
+    std::cout << '\n';
 }
 
 void initialization::print(const size_t depth) const {
@@ -190,7 +196,13 @@ void literal::print(const size_t depth) const {
 void assignment::print(const size_t depth) const {
     print_depth(depth);
 
-    std::cout << "Assignment\n";
+    std::cout << "Assignment";
+
+    if (op)
+        std::cout << " " << pm::from_binop(*op);
+
+    std::cout << '\n';
+
     lhs->print(depth + 1);
     rhs->print(depth + 1);
 }

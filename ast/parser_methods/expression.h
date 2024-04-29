@@ -16,7 +16,7 @@ namespace ast::nodes {
 namespace ast::pm {
     nodes::type_instance parse_type_instance(lex_cptr &ptr, lex_cptr end);
 
-    nodes::un_op parse_unop(lex_cptr &ptr, lex_cptr end);
+    std::unique_ptr<nodes::expression> parse_unop(lex_cptr &ptr, const lex_cptr end);
 
     std::optional<nodes::bin_op_type> parse_binop(lex_cptr &ptr, const lex_cptr);
 

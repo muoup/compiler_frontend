@@ -218,6 +218,22 @@ namespace ast::nodes {
         value_type get_type() const override;
     };
 
+    struct expression_shield : expression {
+        std::unique_ptr<expression> expr;
+
+        expression_shield(expression_shield&&) noexcept = default;
+        expression_shield(std::unique_ptr<expression> expr) : expr(std::move(expr)) {}
+
+        void print(size_t depth) const override {
+            expr->print(depth);
+        };
+        CODEGEN() override;
+
+        value_type get_type() const override {
+            return expr->get_type();
+        };
+    };
+
     // -- Statement Nodes ----------
 
     struct return_op : statement {

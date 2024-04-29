@@ -89,20 +89,24 @@ nodes::value_type pm::parse_value_type(lex_cptr &ptr, const lex_cptr) {
     const auto is_const = !test_token_val(ptr, "mut").has_value();
     const auto is_volatile = test_token_val(ptr, "volatile").has_value();
     const auto type = assert_token(ptr, is_variable_identifier)->span;
+    uint8_t pointer_count = 0;
 
-    auto instrinsic = nodes::get_intrinsic_type(type);
+    while (test_token_val(ptr, "*"))
+        pointer_count++;
 
-    if (!instrinsic) {
+    if (auto intrinsicType = nodes::get_intrinsic_type(type)) {
         return nodes::value_type {
-            type,
+            *intrinsicType,
             is_const,
-            is_volatile
+            is_volatile,
+            pointer_count
         };
     } else {
         return nodes::value_type {
-            *instrinsic,
+            type,
             is_const,
-            is_volatile
+            is_volatile,
+            pointer_count
         };
     }
 }

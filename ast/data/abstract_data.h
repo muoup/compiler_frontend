@@ -48,7 +48,9 @@ namespace ast::nodes {
     struct value_type {
         std::variant<intrinsic_types, std::string_view> type;
         bool is_const, is_volatile;
-        int pointer_depth;
+
+        // May god help anyone who needs more than 255 levels of pointer indirection
+        uint8_t pointer_depth;
 
         void print(size_t depth) const;
         bool is_intrinsic() const {
@@ -69,6 +71,19 @@ namespace ast::nodes {
             auto temp = *this;
             temp.pointer_depth--;
             return temp;
+        }
+
+        bool is_pointer() const {
+            return pointer_depth > 0;
+        }
+
+        bool is_fp() const {
+            if (!is_intrinsic())
+                return false;
+
+            auto lit_type = std::get<intrinsic_types>(type);
+
+            return lit_type == intrinsic_types::f32 || lit_type == intrinsic_types::f64;
         }
     };
 

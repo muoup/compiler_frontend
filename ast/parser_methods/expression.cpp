@@ -15,7 +15,7 @@ using namespace ast::pm;
 
 std::unique_ptr<nodes::expression> pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
     if (auto un_op = get_unop(ptr->span))
-        return std::make_unique<nodes::un_op>(parse_unop(ptr, end));
+        return parse_unop(ptr, end);
 
     if (auto literal = parse_literal(ptr, end))
         return std::make_unique<nodes::literal>(std::move(literal.value()));
@@ -29,7 +29,8 @@ std::unique_ptr<nodes::expression> pm::parse_expression(lex_cptr &ptr, const lex
     if (peek(ptr, end)->span == "match")
         return std::make_unique<nodes::match>(parse_match(ptr, end));
 
-    if (is_variable_identifier(ptr) && try_peek_type(ptr, end, lex::lex_type::IDENTIFIER, 1))
+    if (is_variable_identifier(ptr) &&
+        (try_peek_type(ptr, end, lex::lex_type::IDENTIFIER, 1) || try_peek_val(ptr, end, "*", 1)))
         return std::make_unique<nodes::initialization>(parse_type_instance(ptr, end));
 
     if (peek(ptr, end)->type == lex::lex_type::IDENTIFIER && try_peek_val(ptr, end, "(", 1))
@@ -68,6 +69,8 @@ std::unique_ptr<nodes::expression> pm::parse_expr_tree(lex_cptr &ptr, const lex_
             auto lhs = std::move(expr_stack.top());
             auto rhs = parse_expr_tree(ptr, end);
 
+            expr_stack.pop();
+
             return std::make_unique<nodes::assignment>(
                     std::move(lhs),
                     std::move(rhs),
@@ -93,19 +96,30 @@ std::unique_ptr<nodes::expression> pm::parse_expr_tree(lex_cptr &ptr, const lex_
     return pm::load_if_necessary(std::move(expr_stack.top()));
 }
 
-nodes::un_op pm::parse_unop(lex_cptr &ptr, const lex_cptr end) {
+std::unique_ptr<nodes::expression> pm::parse_unop(lex_cptr &ptr, const lex_cptr end) {
     const auto operator_type = assert_token_type(ptr, lex::lex_type::EXPR_SYMBOL)->span;
-    auto expr = parse_expression(++ptr, end);
+    auto expr = parse_expression(ptr, end);
 
     if (!expr)
         throw std::runtime_error("Expected value after operator");
 
-    ++ptr;
+    auto unop = *get_unop(operator_type);
 
-    return nodes::un_op {
-            unwrap_or_throw(get_unop(operator_type)),
-            std::move(expr)
-    };
+    switch (unop) {
+        case nodes::un_op_type::addr_of:
+            return std::make_unique<nodes::expression_shield>(
+                std::move(expr)
+            );
+        case nodes::un_op_type::deref:
+            return std::make_unique<nodes::load>(
+                std::move(expr)
+            );
+        default:
+            return std::make_unique<nodes::un_op>(
+                unop,
+                std::move(expr)
+            );
+    }
 }
 
 std::optional<nodes::bin_op_type> pm::parse_binop(lex_cptr &ptr, const lex_cptr) {

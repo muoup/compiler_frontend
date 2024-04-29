@@ -18,8 +18,6 @@ namespace cg {
         llvm::Value *lhs, *rhs;
     };
 
-    llvm::Value* load_expr(const std::unique_ptr<ast::nodes::expression> &expr, cg::scope_data &scope);
-
     llvm::Value* varargs_cast(llvm::Value *val, const scope_data& scope);
 
     balance_result balance_sides(llvm::Value *lhs, llvm::Value *rhs, const scope_data& data);
