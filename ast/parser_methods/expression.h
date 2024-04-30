@@ -3,6 +3,7 @@
 #include <memory>
 #include "../util.h"
 #include "../data/node_interfaces.h"
+#include "../data/ast_nodes.h"
 
 namespace ast::nodes {
     struct literal;
@@ -29,6 +30,10 @@ namespace ast::pm {
     std::optional<nodes::literal> parse_literal(lex_cptr &ptr, lex_cptr end);
 
     nodes::match parse_match(lex_cptr &ptr, lex_cptr end);
+
+    nodes::initializer_list parse_initializer_list(lex_cptr &ptr, const ast::lex_cptr end);
+
+    nodes::struct_initializer parse_struct_initializer(ast::lex_cptr &ptr, const ast::lex_cptr end);
 
     std::unique_ptr<nodes::expression> parse_expression(lex_cptr &ptr, const lex_cptr end);
 

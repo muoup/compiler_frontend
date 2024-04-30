@@ -6,29 +6,6 @@
 namespace ast::nodes {
     // -- Expression Nodes ----------
 
-    /**
-     *  Code Block: Non-Abstract Data Type
-     *  ----------------------------------
-     *  A code block represents a scope, any code blocks
-     *  within will have their own innermost scope but will
-     *  also be able to reference any outer scopes.
-     */
-    struct scope_block : expression {
-        using scope_stmts = std::vector<std::unique_ptr<statement>>;
-        scope_stmts statements;
-
-        scope_block() = default;
-        scope_block(scope_block&&) noexcept = default;
-        scope_block(scope_stmts statements)
-                : statements(std::move(statements)) {}
-
-        ~scope_block() = default;
-        void print(size_t depth) const override;
-        llvm::BasicBlock* generate_code(cg::scope_data &scope) const override;
-
-        value_type get_type() const override;
-    };
-
     struct method_call : expression {
         std::string_view method_name;
         std::vector<std::unique_ptr<expression>> arguments;
@@ -131,27 +108,6 @@ namespace ast::nodes {
         value_type get_type() const override;
     };
 
-//    struct accessor : bin_op {
-//        bool is_arrow;
-//        std::unique_ptr<expression> left;
-//        std::unique_ptr<expression> right;
-//
-//        accessor(accessor&&) noexcept = default;
-//        accessor(bool is_arrow, std::unique_ptr<expression> left, std::unique_ptr<expression> right) noexcept
-//                : is_arrow(is_arrow), left(std::move(left)), right(std::move(right)) {}
-//
-//        void print(size_t depth) const override;
-//        CODEGEN() override;
-//        ~accessor() = default;
-//
-//        void populate(std::unique_ptr<expression> left, std::unique_ptr<expression> right) override {
-//            this->left = std::move(left);
-//            this->right = std::move(right);
-//        }
-//
-//        value_type get_type() const override;
-//    };
-
     struct assignment : expression {
         std::unique_ptr<expression> lhs, rhs;
         std::optional<bin_op_type> op = std::nullopt;
@@ -232,6 +188,46 @@ namespace ast::nodes {
         value_type get_type() const override {
             return expr->get_type();
         };
+    };
+
+    struct initializer_list : expression {
+        std::vector<std::unique_ptr<expression>> values;
+
+        initializer_list(initializer_list&&) noexcept = default;
+        initializer_list(std::vector<std::unique_ptr<expression>> values) : values(std::move(values)) {}
+
+        void print(size_t depth) const override;
+        CODEGEN() override;
+
+        value_type get_type() const override;
+    };
+
+    struct array_initializer : expression {
+        value_type array_type;
+        std::vector<std::unique_ptr<expression>> values;
+
+        array_initializer(value_type, initializer_list&&);
+
+        void print(size_t depth) const override;
+        CODEGEN() override;
+
+        value_type get_type() const override {
+            return array_type;
+        }
+    };
+
+    struct struct_initializer : expression {
+        std::string_view struct_type;
+        std::vector<std::unique_ptr<expression>> values;
+
+        struct_initializer(std::string_view struct_type, std::vector<std::unique_ptr<nodes::expression>> init_list);
+
+        void print(size_t depth) const override;
+        CODEGEN() override;
+
+        value_type get_type() const override {
+            return { struct_type };
+        }
     };
 
     // -- Statement Nodes ----------

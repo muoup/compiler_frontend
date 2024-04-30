@@ -123,6 +123,18 @@ llvm::Value* expression_shield::generate_code(cg::scope_data &scope) const {
     return expr->generate_code(scope);
 }
 
+llvm::Value* initializer_list::generate_code(cg::scope_data &scope) const {
+    throw std::runtime_error("A plain initializer list should never be generated into code generation.");
+}
+
+llvm::Value* struct_initializer::generate_code(cg::scope_data &scope) const {
+    return nullptr;
+}
+
+llvm::Value* array_initializer::generate_code(cg::scope_data &scope) const {
+    return nullptr;
+}
+
 llvm::Value* initialization::generate_code(cg::scope_data &scope) const {
     auto type = get_llvm_type(variable.type, scope);
 

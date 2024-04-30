@@ -11,6 +11,8 @@ namespace ast::nodes {
 
         char_, bool_, void_,
 
+        init_list,
+
         infer_type
     };
 
@@ -84,6 +86,10 @@ namespace ast::nodes {
             auto lit_type = std::get<intrinsic_types>(type);
 
             return lit_type == intrinsic_types::f32 || lit_type == intrinsic_types::f64;
+        }
+
+        bool operator ==(const value_type &other) const {
+            return type == other.type && pointer_depth == other.pointer_depth;
         }
     };
 

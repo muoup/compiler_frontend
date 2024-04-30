@@ -6,7 +6,6 @@
 
 #include "basic_codegen.h"
 #include "../ast/data/data_maps.h"
-#include "types.h"
 
 using namespace cg;
 using namespace ast;

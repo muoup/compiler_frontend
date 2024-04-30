@@ -162,4 +162,9 @@ namespace ast {
             return ptr++;
         };
     }
+
+    template <typename T, typename U>
+    bool instance_of(const U* val) {
+        return dynamic_cast<const U*>(val) != nullptr;
+    }
 }

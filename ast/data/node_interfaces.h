@@ -17,7 +17,7 @@ namespace cg {
 namespace ast::nodes {
 
     /**
-     *  Codegen Node: Abstract Data Interface
+     *  Codegen Node: Abstract Node Interface
      *  -------------------------------------
      *  A codegen node is any node which can be
      *  placed into the abstract syntax tree, and
@@ -31,7 +31,7 @@ namespace ast::nodes {
     };
 
     /**
-     *  Expression: Abstract Data Type
+     *  Expression: Abstract Node Interface
      *  ------------------------------
      *  An expression is a single segment of a statement,
      *  if this is generated via codegen, it will return a
@@ -48,7 +48,7 @@ namespace ast::nodes {
     };
 
     /**
-     *  Statement: Abstract Data Type
+     *  Statement: Abstract Node Interface
      *  -----------------------------
      *  A statement represents some executable part of the code,
      *  usually this is one single line of code, but may additionally
@@ -64,7 +64,7 @@ namespace ast::nodes {
     };
 
     /**
-     *  Program Level Statement: Abstract Data Type
+     *  Program Level Statement: Abstract Node Interface
      *  -------------------------------------------
      *  A program-level statement is something which can be executed from the
      *  root of the program. This is usually either a prototype (struct or function),
@@ -77,5 +77,28 @@ namespace ast::nodes {
         virtual ~program_level_stmt() = default;
         virtual void print(size_t depth) const override = 0;
         CODEGEN() override = 0;
+    };
+
+    /**
+     *  Code Block: Non-Abstract Node Interface
+     *  ----------------------------------
+     *  A code block represents a scope, any code blocks
+     *  within will have their own innermost scope but will
+     *  also be able to reference any outer scopes. Whether or
+     *  not a scope block can be realized in a more specific
+     *  form I am not sure.
+     */
+    struct scope_block : codegen_node {
+        using scope_stmts = std::vector<std::unique_ptr<statement>>;
+        scope_stmts statements;
+
+        scope_block() = default;
+        scope_block(scope_block&&) noexcept = default;
+        scope_block(scope_stmts statements)
+                : statements(std::move(statements)) {}
+
+        ~scope_block() = default;
+        void print(size_t depth) const override;
+        llvm::BasicBlock* generate_code(cg::scope_data &scope) const override;
     };
 }

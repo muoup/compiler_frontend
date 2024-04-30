@@ -24,7 +24,7 @@ std::unique_ptr<nodes::expression> pm::parse_expression(lex_cptr &ptr, const lex
         return parse_between(ptr, parse_expr_tree);
 
     if (peek(ptr, end)->span == "{")
-        return std::make_unique<nodes::scope_block>(parse_body(ptr, end));
+        return std::make_unique<nodes::initializer_list>(parse_initializer_list(ptr, end));
 
     if (peek(ptr, end)->span == "match")
         return std::make_unique<nodes::match>(parse_match(ptr, end));
@@ -72,9 +72,7 @@ std::unique_ptr<nodes::expression> pm::parse_expr_tree(lex_cptr &ptr, const lex_
             expr_stack.pop();
 
             return std::make_unique<nodes::assignment>(
-                    std::move(lhs),
-                    std::move(rhs),
-                    assn_type
+                    create_assignment(std::move(lhs), std::move(rhs), assn_type)
             );
         }
 
@@ -146,23 +144,23 @@ std::optional<nodes::bin_op_type> pm::parse_assn(const ast::lex_cptr, ast::lex_c
     return bin_op;
 }
 
-std::optional<nodes::literal> pm::parse_literal(lex_cptr &ptr, const lex_cptr) {
+std::optional<nodes::literal> pm::parse_literal(lex_cptr &ptr, const lex_cptr end) {
     int i = 0;
     double d = 0;
 
-    switch (ptr->type) {
+    switch (peek(ptr, end)->type) {
         case lex::lex_type::INT_LITERAL:
-            std::from_chars(ptr->span.data(), ptr->span.data() + ptr->span.size(), i);
-            ++ptr;
+            std::from_chars(peek(ptr, end)->span.data(), peek(ptr, end)->span.data() + peek(ptr, end)->span.size(), i);
+            consume(ptr, end);
             return nodes::literal { i };
         case lex::lex_type::FLOAT_LITERAL:
-            std::from_chars(ptr->span.data(), ptr->span.data() + ptr->span.size(), d);
-            ++ptr;
+            std::from_chars(peek(ptr, end)->span.data(), peek(ptr, end)->span.data() + peek(ptr, end)->span.size(), d);
+            consume(ptr, end);
             return nodes::literal { d };
         case lex::lex_type::STRING_LITERAL:
-            return nodes::literal { ptr++->span };
+            return nodes::literal { consume(ptr, end)->span };
         case lex::lex_type::CHAR_LITERAL:
-            return nodes::literal { ptr++->span.front() };
+            return nodes::literal { consume(ptr, end)->span.front() };
         default:
             return std::nullopt;
     }
@@ -180,14 +178,13 @@ nodes::type_instance pm::parse_type_instance(lex_cptr &ptr, const lex_cptr end) 
     };
 }
 
-nodes::method_call pm::parse_method_call(lex_cptr &ptr, const lex_cptr) {
-    const auto method_name = ptr++->span;
-    const auto param_end = ptr++->closer.value();
+nodes::method_call pm::parse_method_call(lex_cptr &ptr, const lex_cptr end) {
+    const auto method_name = consume(ptr, end)->span;
+    const auto param_end = consume(ptr, end)->closer.value();
 
     nodes::method_call method_call {
             method_name,
             parse_call_params(ptr, param_end)
-//        parse_split<std::unique_ptr<nodes::expression>, lex_cptr>(ptr, param_end, ",", parse_expression)
     };
 
     ptr = param_end + 1;
@@ -235,4 +232,22 @@ nodes::match pm::parse_match(ast::lex_cptr &ptr, const ast::lex_cptr end) {
     assert_token_val(ptr, "}");
 
     return match;
+}
+
+nodes::initializer_list pm::parse_initializer_list(ast::lex_cptr &ptr, const ast::lex_cptr end) {
+    return nodes::initializer_list {
+        parse_between(ptr, parse_call_params)
+    };
+}
+
+nodes::struct_initializer pm::parse_struct_initializer(ast::lex_cptr &ptr, const ast::lex_cptr end) {
+    auto struct_type = assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span;
+
+    if (!struct_types.contains(struct_type))
+        throw std::runtime_error(std::format("Struct {} not found", struct_type));
+
+    return nodes::struct_initializer {
+        struct_type,
+        parse_initializer_list(ptr, end).values
+    };
 }
