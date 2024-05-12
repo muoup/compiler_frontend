@@ -28,12 +28,13 @@ int main() {
 
     const auto *code = R"(
         struct test {
-            i8 a;
-            i16 b;
+            i32 a; i32 b;
         }
 
         fn main() -> i8 {
             test a = {1, 2};
+
+            __clib_printf("%d", a.a);
         }
     )";
 
@@ -42,7 +43,6 @@ int main() {
 
     ast.print();
     std::cout << "-------------\n";
-
 
     // The AST sometimes prints after the codegen, so we need to flush the output stream.
 //    cg::generate_code(ast, llvm::outs());

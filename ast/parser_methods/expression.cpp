@@ -9,12 +9,13 @@
 #include "../../lexer/lex.h"
 #include "../util.h"
 #include "program.h"
+#include "../data/data_maps.h"
 
 using namespace ast;
 using namespace ast::pm;
 
 std::unique_ptr<nodes::expression> pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
-    if (auto un_op = get_unop(ptr->span))
+    if (auto un_op = find_element(unop_type_map,ptr->span))
         return parse_unop(ptr, end);
 
     if (auto literal = parse_literal(ptr, end))
@@ -81,7 +82,7 @@ std::unique_ptr<nodes::expression> pm::parse_expr_tree(lex_cptr &ptr, const lex_
         if (bin_op == std::nullopt)
             break;
 
-        while (!binop_stack.empty() && get_prec(*bin_op) <= get_prec(binop_stack.top()))
+        while (!binop_stack.empty() && *find_element(binop_prec, *bin_op) <= *find_element(binop_prec, binop_stack.top()))
             combine_back();
 
         expr_stack.emplace(parse_expression(ptr, end));
@@ -101,7 +102,7 @@ std::unique_ptr<nodes::expression> pm::parse_unop(lex_cptr &ptr, const lex_cptr 
     if (!expr)
         throw std::runtime_error("Expected value after operator");
 
-    auto unop = *get_unop(operator_type);
+    auto unop = *find_element(unop_type_map, operator_type);
 
     switch (unop) {
         case nodes::un_op_type::addr_of:
@@ -126,7 +127,7 @@ std::optional<nodes::bin_op_type> pm::parse_binop(lex_cptr &ptr, const lex_cptr)
     if (!op)
         return std::nullopt;
 
-    return get_binop((*op)->span);
+    return find_element(binop_type_map,(*op)->span);
 }
 
 std::optional<nodes::bin_op_type> pm::parse_assn(const ast::lex_cptr, ast::lex_cptr &ptr) {
@@ -136,7 +137,7 @@ std::optional<nodes::bin_op_type> pm::parse_assn(const ast::lex_cptr, ast::lex_c
         return std::nullopt;
 
     auto op = type.substr(0, 1);
-    auto bin_op = get_binop(op);
+    auto bin_op = find_element(binop_type_map, op);
 
     if (!bin_op)
         throw std::runtime_error("Invalid assignment operator");
@@ -167,7 +168,7 @@ std::optional<nodes::literal> pm::parse_literal(lex_cptr &ptr, const lex_cptr en
 }
 
 nodes::type_instance pm::parse_type_instance(lex_cptr &ptr, const lex_cptr end) {
-    auto val_type = pm::parse_value_type(ptr, end);
+    auto val_type = pm::parse_var_type(ptr, end);
     auto type = assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span;
 
     scope_stack.back().emplace(type, val_type);
@@ -194,7 +195,7 @@ nodes::method_call pm::parse_method_call(lex_cptr &ptr, const lex_cptr end) {
 
 nodes::var_ref pm::parse_variable(ast::lex_cptr &ptr, const ast::lex_cptr end) {
     auto name = assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span;
-    auto type = get_variable_type(name);
+    auto type = get_var_type(name);
 
     return nodes::var_ref {
             name,
@@ -221,7 +222,7 @@ nodes::match pm::parse_match(ast::lex_cptr &ptr, const ast::lex_cptr end) {
         auto match_expr = parse_expr_tree(ptr, end);
         auto body = parse_body(ptr, end);
 
-        match.cases.emplace_back(nodes::match::match_case {
+        match.cases.emplace_back(nodes::match_case {
             std::move(match_expr),
             std::move(body)
         });

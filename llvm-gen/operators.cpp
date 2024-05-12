@@ -81,7 +81,7 @@ llvm::Value* cg::generate_accessor(const std::unique_ptr<ast::nodes::expression>
     if (l_ref == nullptr)
         throw std::runtime_error("Invalid left side of accessor.");
 
-    auto get_var = scope.get_variable(l_ref->name);
+    auto get_var = scope.get_variable(l_ref->var_name);
     auto var_alloc = get_var.var_allocation;
     llvm::Value *var_val = (llvm::Value*) get_var.var_allocation;
 
@@ -89,7 +89,7 @@ llvm::Value* cg::generate_accessor(const std::unique_ptr<ast::nodes::expression>
         throw std::runtime_error("Invalid left side of accessor.");
 
     auto *struct_type = get_var.struct_type->struct_type;
-    auto field_index = std::ranges::find(get_var.struct_type->field_names, r_ref->name);
+    auto field_index = std::ranges::find(get_var.struct_type->field_names, r_ref->var_name);
 
     if (field_index == get_var.struct_type->field_names.end())
         throw std::runtime_error("Invalid right side of accessor.");

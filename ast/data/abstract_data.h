@@ -2,6 +2,7 @@
 #include <optional>
 #include <string_view>
 #include <variant>
+#include "node_interfaces.h"
 
 namespace ast::nodes {
     enum class intrinsic_types {
@@ -37,68 +38,43 @@ namespace ast::nodes {
         b_and_eq, b_or_eq, b_xor_eq, shl_eq, shr_eq
     };
 
-    enum var_type_category {
-        INTRINSIC,
-        NON_INTRINSIC
-    };
+    struct variable_type : printable {
+        NODENAME("VARIABLE_TYPE");
+        DETAILS(type_str());
 
-    struct binary_operation {
-        std::optional<bin_op_type> type;
-        bool is_assignment;
-    };
-
-    struct value_type {
         std::variant<intrinsic_types, std::string_view> type;
         bool is_const, is_volatile;
 
         // May god help anyone who needs more than 255 levels of pointer indirection
-        uint8_t pointer_depth;
+        uint8_t pointer_depth = 0;
 
-        void print(size_t depth) const;
-        bool is_intrinsic() const {
-            return std::holds_alternative<intrinsic_types>(type);
-        };
+        variable_type(std::variant<intrinsic_types, std::string_view> type, bool is_const = false, bool is_volatile = false, uint8_t pointer_depth = 0)
+            : type(type), is_const(is_const), is_volatile(is_volatile), pointer_depth(pointer_depth) {}
+        ~variable_type() override = default;
 
-        static value_type void_type() {
+        static variable_type void_type() {
             return { intrinsic_types::void_ };
         }
 
-        value_type pointer_to() const {
-            auto temp = *this;
-            temp.pointer_depth++;
-            return temp;
-        }
-
-        value_type dereference() const {
-            auto temp = *this;
-            temp.pointer_depth--;
-            return temp;
-        }
-
-        bool is_pointer() const {
-            return pointer_depth > 0;
-        }
-
-        bool is_fp() const {
-            if (!is_intrinsic())
-                return false;
-
-            auto lit_type = std::get<intrinsic_types>(type);
-
-            return lit_type == intrinsic_types::f32 || lit_type == intrinsic_types::f64;
-        }
-
-        bool operator ==(const value_type &other) const {
-            return type == other.type && pointer_depth == other.pointer_depth;
-        }
+        variable_type pointer_to() const;
+        variable_type dereference() const;
+        bool is_intrinsic() const;
+        bool is_pointer() const;
+        bool is_fp() const;
+        bool operator ==(const variable_type &other) const;
+        std::string_view type_str() const;
     };
 
-    struct type_instance {
-        value_type type;
+    struct type_instance : printable {
+        NODENAME("TYPE_INSTANCE");
+        CHILDREN(type);
+
+        variable_type type;
         std::string_view var_name;
 
-        void print(size_t depth) const;
-    };
+        type_instance(variable_type type, std::string_view var_name)
+            : type(type), var_name(var_name) {}
 
-    std::optional<intrinsic_types> get_intrinsic_type(std::string_view type);
+        ~type_instance() override = default;
+    };
 }

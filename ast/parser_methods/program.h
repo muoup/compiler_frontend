@@ -10,7 +10,7 @@ namespace ast::pm {
 
     nodes::function parse_function(lex_cptr& ptr, const lex_cptr end);
     nodes::scope_block parse_body(lex_cptr& ptr, lex_cptr end);
-    nodes::value_type parse_value_type(lex_cptr& ptr, lex_cptr end);
+    nodes::variable_type parse_var_type(lex_cptr& ptr, lex_cptr end);
     nodes::struct_declaration parse_struct_decl(lex_cptr& ptr, lex_cptr end);
 
     std::vector<nodes::type_instance> parse_method_params(lex_cptr& ptr, lex_cptr end);

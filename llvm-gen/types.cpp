@@ -22,7 +22,7 @@ const std::unordered_map<ast::nodes::intrinsic_types, type_getter> type_generato
     { ast::nodes::intrinsic_types::void_, AS_TYPE_GEN(llvm::Type::getVoidTy) }
 };
 
-const struct_definition* cg::get_struct_ref(const ast::nodes::value_type &val_type, scope_data &scope) {
+const struct_definition* cg::get_struct_ref(const ast::nodes::variable_type &val_type, scope_data &scope) {
     const auto& type = val_type.type;
 
     if (std::holds_alternative<ast::nodes::intrinsic_types>(type)) {
@@ -34,7 +34,7 @@ const struct_definition* cg::get_struct_ref(const ast::nodes::value_type &val_ty
     return &scope.get_struct(type_name);
 }
 
-llvm::Type* cg::get_llvm_type(const ast::nodes::value_type &val_type, scope_data &scope) {
+llvm::Type* cg::get_llvm_type(const ast::nodes::variable_type &val_type, scope_data &scope) {
     const auto& type = val_type.type;
     llvm::Type* derived_type = std::holds_alternative<ast::nodes::intrinsic_types>(type) ?
             type_generators.at(std::get<ast::nodes::intrinsic_types>(type))(scope.context) :

@@ -175,7 +175,7 @@ llvm::Value* method_call::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* var_ref::generate_code(cg::scope_data &scope) const {
-    return scope.get_variable(name).var_allocation;
+    return scope.get_variable(var_name).var_allocation;
 }
 
 llvm::Value* return_op::generate_code(cg::scope_data &scope) const {
@@ -378,11 +378,11 @@ llvm::Value *struct_declaration::generate_code(cg::scope_data &scope) const {
         field_names.emplace_back(field.var_name);
     }
 
-    if (scope.struct_table->contains(name))
+    if (scope.struct_table->contains(struct_name))
         throw std::runtime_error("Struct already exists in symbol table.");
 
-    scope.struct_table->emplace(name, struct_definition {
-        llvm::StructType::create(scope.context, field_types, name),
+    scope.struct_table->emplace(struct_name, struct_definition {
+        llvm::StructType::create(scope.context, field_types, struct_name),
         std::move(field_names)
     });
 

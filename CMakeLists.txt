@@ -26,6 +26,7 @@ add_executable(llvm_frontend ${FILES}
         ast/parser_methods/declarations.cpp
         ast/parser_methods/declarations.h
         ast/data/expr_types.cpp
+        ast/data/node_interfaces.cpp
 )
 
 target_link_libraries(llvm_frontend PRIVATE LLVMCore)

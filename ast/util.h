@@ -16,9 +16,9 @@ namespace lex {
 }
 
 namespace ast {
-    extern std::vector<std::unordered_map<std::string_view, ast::nodes::value_type>> scope_stack;
+    extern std::vector<std::unordered_map<std::string_view, ast::nodes::variable_type>> scope_stack;
     extern std::unordered_map<std::string_view, std::vector<ast::nodes::type_instance>> struct_types;
-    extern std::unordered_map<std::string_view, ast::nodes::value_type> function_types;
+    extern std::unordered_map<std::string_view, ast::nodes::variable_type> function_types;
 
     using lex_cptr = std::vector<lex::lex_token>::const_iterator;
 
@@ -30,7 +30,7 @@ namespace ast {
 
     using parse_pred = bool(*)(lex_cptr);
 
-    std::optional<ast::nodes::value_type> get_variable_type(std::string_view var_name);
+    std::optional<ast::nodes::variable_type> get_var_type(std::string_view var_name);
 
     void throw_unexpected(const lex::lex_token& token, std::string_view expected = "No explanation given.");
     void throw_unclosed(const lex::lex_token& token, std::string_view expected = "No explanation given.");

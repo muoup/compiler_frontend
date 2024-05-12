@@ -8,7 +8,7 @@ namespace llvm {
 }
 
 namespace ast::nodes {
-    struct value_type;
+    struct variable_type;
     struct type_instance;
 }
 
@@ -17,6 +17,6 @@ namespace ast::nodes {
 using type_getter = llvm::Type *(*)(llvm::LLVMContext &);
 
 namespace cg {
-    const struct_definition* get_struct_ref(const ast::nodes::value_type &val_type, scope_data &scope);
-    llvm::Type* get_llvm_type(const ast::nodes::value_type &val_type, scope_data &scope);
+    const struct_definition* get_struct_ref(const ast::nodes::variable_type &val_type, scope_data &scope);
+    llvm::Type* get_llvm_type(const ast::nodes::variable_type &val_type, scope_data &scope);
 }

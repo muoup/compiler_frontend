@@ -1,12 +1,18 @@
 #pragma once
 
-#include "node_interfaces.h"
+#include "abstract_data.h"
 #include "LLVM/IR/Value.h"
+#include "data_maps.h"
 
 namespace ast::nodes {
     // -- Expression Nodes ----------
 
     struct method_call : expression {
+        NODENAME("METHOD_CALL");
+        CHILDREN(arguments);
+
+        DETAILS(method_name);
+
         std::string_view method_name;
         std::vector<std::unique_ptr<expression>> arguments;
 
@@ -15,42 +21,52 @@ namespace ast::nodes {
                     std::vector<std::unique_ptr<expression>> arguments)
                 : method_name(method_name), arguments(std::move(arguments)) {}
 
-        void print(size_t depth) const override;
         CODEGEN() override;
         ~method_call() = default;
 
-        value_type get_type() const override;
+        variable_type get_type() const override;
     };
 
     struct initialization : expression {
+        NODENAME("INITIALIZATION");
+        CHILDREN(variable);
+
         type_instance variable;
 
         initialization(initialization&&) noexcept = default;
-        initialization(type_instance variable, bool is_volatile = false)
-            : variable(variable) {}
+        initialization(type_instance variable)
+            : variable(std::move(variable)) {}
 
-        void print(size_t depth) const override;
         CODEGEN() override;
         ~initialization() = default;
 
-        value_type get_type() const override;
+        variable_type get_type() const override;
     };
 
     struct var_ref : expression {
-        std::string_view name;
-        std::optional<nodes::value_type> type = std::nullopt;
+        NODENAME("VAR_REF");
+        CHILDREN(type);
+
+        DETAILS(var_name);
+
+        std::string_view var_name;
+        std::optional<nodes::variable_type> type = std::nullopt;
 
         var_ref(var_ref&&) noexcept = default;
-        var_ref(std::string_view name, std::optional<nodes::value_type> type) : name(name), type(type) {}
+        var_ref(std::string_view name, std::optional<nodes::variable_type> type) : var_name(name), type(type) {}
 
-        void print(size_t depth) const override;
         CODEGEN() override;
         ~var_ref() = default;
 
-        value_type get_type() const override;
+        variable_type get_type() const override;
     };
 
     struct un_op : expression {
+        NODENAME("UN_OP");
+        CHILDREN(value);
+
+        DETAILS(ast::pm::find_key(ast::pm::unop_type_map, type));
+
         un_op_type type;
         std::unique_ptr<expression> value;
 
@@ -58,14 +74,18 @@ namespace ast::nodes {
         un_op(un_op_type type, std::unique_ptr<expression> value) noexcept
             : type(type), value(std::move(value)) {}
 
-        void print(size_t depth) const override;
         CODEGEN() override;
         ~un_op() = default;
 
-        value_type get_type() const override;
+        variable_type get_type() const override;
     };
 
     struct bin_op : expression {
+        NODENAME("BIN_OP");
+        CHILDREN(left, right);
+
+        DETAILS(ast::pm::find_key(ast::pm::binop_type_map, type));
+
         bin_op_type type;
         std::unique_ptr<expression> left;
         std::unique_ptr<expression> right;
@@ -79,18 +99,27 @@ namespace ast::nodes {
             this->right = std::move(right);
         }
 
-        void print(size_t depth) const override;
         CODEGEN() override;
         ~bin_op() = default;
 
-        value_type get_type() const override;
+        variable_type get_type() const override;
+    };
+
+    struct match_case : printable {
+        NODENAME("MATCH_CASE");
+        CHILDREN(match_expr, body);
+
+        std::unique_ptr<expression> match_expr;
+        scope_block body;
+
+        match_case(match_case&&) noexcept = default;
+        match_case(std::unique_ptr<expression> match_expr, scope_block body)
+                : match_expr(std::move(match_expr)), body(std::move(body)) {}
     };
 
     struct match : expression {
-        struct match_case {
-            std::unique_ptr<expression> match_expr;
-            scope_block body;
-        };
+        NODENAME("MATCH");
+        CHILDREN(match_expr, cases, default_case);
 
         std::unique_ptr<expression> match_expr;
         std::vector<match_case> cases;
@@ -102,13 +131,17 @@ namespace ast::nodes {
                 : match_expr(std::move(match_expr)), cases(std::move(cases)) {}
 
         ~match() = default;
-        void print(size_t depth) const override;
         CODEGEN() override;
 
-        value_type get_type() const override;
+        variable_type get_type() const override;
     };
 
     struct assignment : expression {
+        NODENAME("ASSIGNMENT");
+        CHILDREN(lhs, rhs);
+
+        DETAILS(op ? ast::pm::find_key(ast::pm::binop_type_map, op.value()) : std::nullopt);
+
         std::unique_ptr<expression> lhs, rhs;
         std::optional<bin_op_type> op = std::nullopt;
 
@@ -118,11 +151,10 @@ namespace ast::nodes {
         assignment(std::unique_ptr<expression> lhs, std::unique_ptr<expression> rhs, std::optional<bin_op_type> op)
                 : lhs(std::move(lhs)), rhs(std::move(rhs)), op(op) {}
 
-        void print(size_t depth) const override;
         CODEGEN() override;
         ~assignment() = default;
 
-        value_type get_type() const override;
+        variable_type get_type() const override;
     };
 
     enum literal_type {
@@ -135,97 +167,127 @@ namespace ast::nodes {
     struct literal : expression {
         using lit_variant = std::variant<unsigned int, int, double, char, std::string_view>;
 
+        NODENAME("LITERAL");
+        DETAILS(get_type_name());
+
         lit_variant value;
         uint8_t type_size = 32;
 
         literal(literal&&) noexcept = default;
         literal(lit_variant value, uint8_t type_size = 32) noexcept : value(std::move(value)), type_size(type_size) {}
 
-        void print(size_t depth) const override;
         CODEGEN() override;
         ~literal() = default;
 
-        value_type get_type() const override;
+        variable_type get_type() const override;
+
+        std::string get_type_name() const {
+            switch (value.index()) {
+                case UINT:
+                    return "u" + std::to_string(type_size);
+                case INT:
+                    return "i" + std::to_string(type_size);
+                case FLOAT:
+                    return "f" + std::to_string(type_size);
+                case CHAR:
+                    return "char";
+                case STRING:
+                    return "char*";
+                default:
+                    std::unreachable();
+            }
+        }
     };
 
     struct cast : expression {
+        NODENAME("CAST");
+        CHILDREN(expr);
+        DETAILS("(", cast_type, ")");
+
         std::unique_ptr<expression> expr;
-        value_type cast_type;
+        variable_type cast_type;
 
         cast(cast&&) noexcept = default;
-        cast(std::unique_ptr<expression> expr, value_type cast_type)
+        cast(std::unique_ptr<expression> expr, variable_type cast_type)
             : expr(std::move(expr)), cast_type(cast_type) {}
 
-        void print(size_t depth) const override;
         CODEGEN() override;
 
-        value_type get_type() const override;
+        variable_type get_type() const override;
     };
 
     struct load : expression {
+        NODENAME("LOAD");
+        CHILDREN(expr);
+
         std::unique_ptr<expression> expr;
 
         load(load&&) noexcept = default;
         load(std::unique_ptr<expression> expr) : expr(std::move(expr)) {}
 
-        void print(size_t depth) const override;
         CODEGEN() override;
 
-        value_type get_type() const override;
+        variable_type get_type() const override;
     };
 
     struct expression_shield : expression {
+        NODENAME("EXPRESSION_SHIELD");
+        CHILDREN(expr);
+
         std::unique_ptr<expression> expr;
 
         expression_shield(expression_shield&&) noexcept = default;
         expression_shield(std::unique_ptr<expression> expr) : expr(std::move(expr)) {}
 
-        void print(size_t depth) const override {
-            expr->print(depth);
-        };
         CODEGEN() override;
 
-        value_type get_type() const override {
+        variable_type get_type() const override {
             return expr->get_type();
         };
     };
 
     struct initializer_list : expression {
+        NODENAME("INITIALIZER_LIST");
+        CHILDREN(values);
+
         std::vector<std::unique_ptr<expression>> values;
 
         initializer_list(initializer_list&&) noexcept = default;
         initializer_list(std::vector<std::unique_ptr<expression>> values) : values(std::move(values)) {}
 
-        void print(size_t depth) const override;
         CODEGEN() override;
 
-        value_type get_type() const override;
+        variable_type get_type() const override;
     };
 
     struct array_initializer : expression {
-        value_type array_type;
+        NODENAME("ARRAY_INITIALIZER");
+        CHILDREN(values);
+
+        variable_type array_type;
         std::vector<std::unique_ptr<expression>> values;
 
-        array_initializer(value_type, initializer_list&&);
+        array_initializer(variable_type, initializer_list&&);
 
-        void print(size_t depth) const override;
         CODEGEN() override;
 
-        value_type get_type() const override {
+        variable_type get_type() const override {
             return array_type;
         }
     };
 
     struct struct_initializer : expression {
+        NODENAME("STRUCT_INITIALIZER");
+        CHILDREN(values);
+
         std::string_view struct_type;
         std::vector<std::unique_ptr<expression>> values;
 
         struct_initializer(std::string_view struct_type, std::vector<std::unique_ptr<nodes::expression>> init_list);
 
-        void print(size_t depth) const override;
         CODEGEN() override;
 
-        value_type get_type() const override {
+        variable_type get_type() const override {
             return { struct_type };
         }
     };
@@ -233,18 +295,23 @@ namespace ast::nodes {
     // -- Statement Nodes ----------
 
     struct return_op : statement {
+        NODENAME("RETURN_OP");
+        CHILDREN(val);
+
         std::unique_ptr<expression> val;
 
         return_op() = default;
         return_op(return_op&&) noexcept = default;
         return_op(std::unique_ptr<expression> val) : val(std::move(val)) {}
 
-        void print(size_t depth) const override;
         ~return_op() = default;
         CODEGEN() override;
     };
 
     struct if_statement : statement {
+        NODENAME("IF_STATEMENT");
+        CHILDREN(condition, body, else_body);
+
         std::unique_ptr<expression> condition;
         scope_block body;
         std::optional<scope_block> else_body = std::nullopt;
@@ -257,11 +324,13 @@ namespace ast::nodes {
             : condition(std::move(condition)), body(std::move(body)), else_body(std::move(else_body)) {}
 
         ~if_statement() = default;
-        void print(size_t else_child) const override;
         CODEGEN() override;
     };
 
     struct loop : statement {
+        NODENAME("LOOP");
+        CHILDREN(condition, body);
+
         bool pre_eval = true;
         std::unique_ptr<expression> condition;
         scope_block body;
@@ -271,11 +340,13 @@ namespace ast::nodes {
                 : pre_eval(pre_eval), condition(std::move(condition)), body(std::move(body)) {}
 
         ~loop() = default;
-        void print(size_t depth) const override;
         CODEGEN() override;
     };
 
     struct for_loop : statement {
+        NODENAME("FOR_LOOP");
+        CHILDREN(init, condition, update, body);
+
         std::unique_ptr<expression> init;
         std::unique_ptr<expression> condition;
         std::unique_ptr<expression> update;
@@ -288,20 +359,19 @@ namespace ast::nodes {
                   update(std::move(update)), body(std::move(body)) {}
 
         ~for_loop() = default;
-        void print(size_t depth) const override;
         CODEGEN() override;
     };
 
     struct expression_root : statement {
+        NODENAME("EXPRESSION_ROOT");
+        CHILDREN(expr);
+
         std::unique_ptr<expression> expr;
 
         expression_root(expression_root&&) noexcept = default;
         expression_root(std::unique_ptr<expression> expr) : expr(std::move(expr)) {}
 
         ~expression_root() = default;
-        inline void print(size_t depth) const override {
-            expr->print(depth);
-        };
         inline CODEGEN() override {
             return expr->generate_code(scope);
         };
@@ -319,17 +389,19 @@ namespace ast::nodes {
      *  functions are a top-level construct.
      */
     struct function : program_level_stmt {
-        value_type return_type;
+        NODENAME("FUNCTION");
+        CHILDREN(body);
+
+        variable_type return_type;
         std::string_view fn_name;
         std::vector<type_instance> param_types;
         scope_block body;
 
         function(function&&) noexcept = default;
-        function(value_type return_type, std::string_view method_name, std::vector<type_instance> param_types, scope_block body)
+        function(variable_type return_type, std::string_view method_name, std::vector<type_instance> param_types, scope_block body)
                 : return_type(return_type), fn_name(method_name), param_types(std::move(param_types)), body(std::move(body)) {}
 
         ~function() = default;
-        void print(size_t depth) const override;
         CODEGEN() override;
     };
 
@@ -340,28 +412,34 @@ namespace ast::nodes {
      *  This is used to define new types in the program.
      */
     struct struct_declaration : program_level_stmt {
-        std::string_view name;
+        NODENAME("STRUCT_DECLARATION");
+        CHILDREN(fields);
+
+        std::string_view struct_name;
         std::vector<type_instance> fields;
 
         struct_declaration(struct_declaration&&) noexcept = default;
         struct_declaration(std::string_view name, std::vector<type_instance> fields)
-                : name(name), fields(std::move(fields)) {}
+                : struct_name(name), fields(std::move(fields)) {}
 
         ~struct_declaration() = default;
-        void print(size_t depth) const override;
         CODEGEN() override;
     };
 
     // -- Root Node -----------------
 
     struct root : codegen_node {
+        NODENAME("ROOT");
+        CHILDREN(program_level_statements);
+
         std::vector<std::unique_ptr<program_level_stmt>> program_level_statements;
 
         root() noexcept = default;
         root(root&&) noexcept = default;
         ~root() = default;
 
-        void print(size_t depth = 0) const override;
+
+
         CODEGEN() override;
     };
 }

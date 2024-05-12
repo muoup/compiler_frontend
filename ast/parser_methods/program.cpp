@@ -4,6 +4,7 @@
 #include "../util.h"
 #include "../../lexer/lex.h"
 #include "statement.h"
+#include "../data/data_maps.h"
 
 using namespace ast;
 
@@ -34,8 +35,8 @@ nodes::function pm::parse_function(lex_cptr &ptr, const lex_cptr end) {
     auto params = parse_between(ptr, "(", parse_method_params);
 
     auto ret_type = test_token_val(ptr, "->") ?
-            parse_value_type(ptr, end) :
-            nodes::value_type::void_type();
+                    parse_var_type(ptr, end) :
+                    nodes::variable_type::void_type();
 
     function_types.emplace(function_name, ret_type);
 
@@ -85,7 +86,7 @@ nodes::scope_block pm::parse_body(lex_cptr &ptr, lex_cptr end) {
     return nodes::scope_block { std::move(stmts) };
 }
 
-nodes::value_type pm::parse_value_type(lex_cptr &ptr, const lex_cptr) {
+nodes::variable_type pm::parse_var_type(lex_cptr &ptr, lex_cptr) {
     const auto is_const = !test_token_val(ptr, "mut").has_value();
     const auto is_volatile = test_token_val(ptr, "volatile").has_value();
     const auto type = assert_token(ptr, is_variable_identifier)->span;
@@ -94,15 +95,15 @@ nodes::value_type pm::parse_value_type(lex_cptr &ptr, const lex_cptr) {
     while (test_token_val(ptr, "*"))
         pointer_count++;
 
-    if (auto intrinsicType = nodes::get_intrinsic_type(type)) {
-        return nodes::value_type {
+    if (auto intrinsicType = find_element(ast::pm::intrin_map, type)) {
+        return nodes::variable_type {
             *intrinsicType,
             is_const,
             is_volatile,
             pointer_count
         };
     } else {
-        return nodes::value_type {
+        return nodes::variable_type {
             type,
             is_const,
             is_volatile,
