@@ -27,7 +27,7 @@ std::unique_ptr<nodes::statement> pm::parse_statement(lex_cptr &ptr, lex_cptr en
             return std::make_unique<nodes::return_op>();
 
         return std::make_unique<nodes::return_op>(
-            parse_expr_tree(ptr, end)
+            load_if_necessary(parse_expr_tree(ptr, end))
         );
     }
 

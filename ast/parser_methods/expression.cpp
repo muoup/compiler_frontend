@@ -30,14 +30,16 @@ std::unique_ptr<nodes::expression> pm::parse_expression(lex_cptr &ptr, const lex
     if (peek(ptr, end)->span == "match")
         return std::make_unique<nodes::match>(parse_match(ptr, end));
 
-    if (is_variable_identifier(ptr) &&
-        (try_peek_type(ptr, end, lex::lex_type::IDENTIFIER, 1) || try_peek_val(ptr, end, "*", 1)))
+    if (is_variable_identifier(ptr))
         return std::make_unique<nodes::initialization>(parse_type_instance(ptr, end));
 
-    if (peek(ptr, end)->type == lex::lex_type::IDENTIFIER && try_peek_val(ptr, end, "(", 1))
+    if (try_peek_type(ptr, end, lex::lex_type::IDENTIFIER) && try_peek_val(ptr, end, "(", 1))
         return std::make_unique<nodes::method_call>(parse_method_call(ptr, end));
 
-    if (peek(ptr, end)->type == lex::lex_type::IDENTIFIER)
+    if (try_peek_type(ptr, end, lex::lex_type::IDENTIFIER) && try_peek_val(ptr, end, "[", 1))
+        return std::make_unique<nodes::bin_op>(parse_array_access(ptr, end));
+
+    if (try_peek_type(ptr, end, lex::lex_type::IDENTIFIER))
         return std::make_unique<nodes::var_ref>(parse_variable(ptr, end));
 
     return nullptr;
@@ -69,6 +71,7 @@ std::unique_ptr<nodes::expression> pm::parse_expr_tree(lex_cptr &ptr, const lex_
             auto assn_type = parse_assn(end, ptr);
             auto lhs = std::move(expr_stack.top());
             auto rhs = parse_expr_tree(ptr, end);
+            rhs = load_if_necessary(std::move(rhs));
 
             expr_stack.pop();
 
@@ -92,7 +95,7 @@ std::unique_ptr<nodes::expression> pm::parse_expr_tree(lex_cptr &ptr, const lex_
     while (!binop_stack.empty())
         combine_back();
 
-    return pm::load_if_necessary(std::move(expr_stack.top()));
+    return std::move(expr_stack.top());
 }
 
 std::unique_ptr<nodes::expression> pm::parse_unop(lex_cptr &ptr, const lex_cptr end) {
@@ -191,6 +194,23 @@ nodes::method_call pm::parse_method_call(lex_cptr &ptr, const lex_cptr end) {
     ptr = param_end + 1;
 
     return method_call;
+}
+
+nodes::bin_op pm::parse_array_access(lex_cptr &ptr, const lex_cptr end) {
+    const auto var_name = assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span;
+    auto array_index = load_if_necessary(
+            parse_between(ptr, "[", parse_expr_tree)
+    );
+
+    return nodes::bin_op{
+            nodes::bin_op_type::acc,
+            std::make_unique<nodes::var_ref>(
+                    var_name,
+                    get_var_type(var_name)
+            ),
+            std::move(array_index)
+    };
+
 }
 
 nodes::var_ref pm::parse_variable(ast::lex_cptr &ptr, const ast::lex_cptr end) {

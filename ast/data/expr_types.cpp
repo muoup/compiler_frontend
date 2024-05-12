@@ -4,7 +4,8 @@
 using namespace ast::nodes;
 
 variable_type method_call::get_type() const {
-    return function_types.at(method_name);
+    return ast::pm::find_element(ast::function_types, method_name)
+        .value_or(variable_type::void_type());
 }
 
 variable_type initialization::get_type() const {
@@ -12,7 +13,7 @@ variable_type initialization::get_type() const {
 }
 
 variable_type var_ref::get_type() const {
-    return type->pointer_to();
+    return type->change_var_ref(true);
 }
 
 variable_type un_op::get_type() const {
@@ -21,6 +22,9 @@ variable_type un_op::get_type() const {
 
 variable_type get_accessor_type(const bin_op &self) {
     auto type = self.left->get_type();
+
+    if (type.is_pointer())
+        return type.dereference();
 
     if (type.is_intrinsic())
         throw std::runtime_error("Cannot access member of intrinsic type!");
@@ -37,7 +41,7 @@ variable_type get_accessor_type(const bin_op &self) {
 
     for (const auto &member : struct_decl) {
         if (member.var_name == member_name)
-            return member.type;
+            return member.type.pointer_to().change_var_ref(true);
     }
 
     throw std::runtime_error("Member not found!");
@@ -64,9 +68,9 @@ variable_type assignment::get_type() const {
 variable_type literal::get_type() const {
     switch (value.index()) {
         case UINT:
-            return { intrinsic_types::u32 };
+            return { intrinsic_types::u64 };
         case INT:
-            return { intrinsic_types::i32 };
+            return { intrinsic_types::i64 };
         case FLOAT:
             return { intrinsic_types::f64 };
         case CHAR:
@@ -86,7 +90,12 @@ variable_type cast::get_type() const {
 }
 
 variable_type load::get_type() const {
-    return expr->get_type().dereference();
+    auto type = expr->get_type();
+
+    if (type.is_var_ref)
+        return type.change_var_ref(false);
+
+    return type.dereference();
 }
 
 variable_type initializer_list::get_type() const {

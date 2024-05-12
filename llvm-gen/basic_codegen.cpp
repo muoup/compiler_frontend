@@ -114,7 +114,7 @@ llvm::Value* load::generate_code(cg::scope_data &scope) const {
     if (!val->getType()->isPointerTy())
         throw std::runtime_error("Cannot dereference non-pointer type.");
 
-    auto *new_type = get_llvm_type(expr->get_type().dereference(), scope);
+    auto *new_type = get_llvm_type(get_type(), scope);
 
     return scope.builder.CreateLoad(new_type, val);
 }
@@ -124,19 +124,41 @@ llvm::Value* expression_shield::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* initializer_list::generate_code(cg::scope_data &scope) const {
-    throw std::runtime_error("A plain initializer list should never be generated into code generation.");
+    throw std::runtime_error("Initializer lists are not yet implemented.");
 }
 
 llvm::Value* struct_initializer::generate_code(cg::scope_data &scope) const {
-    return nullptr;
+    auto struct_def = scope.get_struct(struct_type);
+    auto struct_size = struct_def.field_decls.size();
+
+    llvm::Value* aggregate = llvm::UndefValue::get(struct_def.struct_type);
+
+    for (auto i = 0; i < struct_size; i++)
+        aggregate = scope.builder.CreateInsertValue(aggregate, values[i]->generate_code(scope), i);
+
+    return aggregate;
 }
 
 llvm::Value* array_initializer::generate_code(cg::scope_data &scope) const {
-    return nullptr;
+    auto type = get_llvm_type(array_type, scope);
+
+    llvm::Value* aggregate = llvm::UndefValue::get(llvm::ArrayType::get(type, values.size()));
+
+    for (auto i = 0; i < values.size(); ++i)
+        aggregate = scope.builder.CreateInsertValue(aggregate, values[i]->generate_code(scope), i);
+
+    return aggregate;
 }
 
 llvm::Value* initialization::generate_code(cg::scope_data &scope) const {
-    auto type = get_llvm_type(variable.type, scope);
+    auto init_type = get_type();
+    auto type = get_llvm_type(init_type, scope);
+
+    if (init_type.array_length == -1)
+        throw std::runtime_error("Cannot initialize array with unknown length.");
+
+    if (init_type.array_length)
+        type = llvm::ArrayType::get(type, init_type.array_length);
 
     return add_to_table(scope.var_tables, variable.var_name, scope_variable {
         .var_allocation = scope.builder.CreateAlloca(type),
@@ -149,6 +171,9 @@ llvm::Value* method_call::generate_code(cg::scope_data &scope) const {
     llvm::Function* func = method_name.starts_with(libc_prefix) ?
                            get_libc_fn(method_name, scope) :
                            scope.module->getFunction(method_name);
+
+    if (!func)
+        throw std::runtime_error("Function not found.");
 
     std::vector<llvm::Value*> args;
 
@@ -164,9 +189,6 @@ llvm::Value* method_call::generate_code(cg::scope_data &scope) const {
 
         args.emplace_back(param_val);
     }
-
-    if (!func)
-        throw std::runtime_error("Function not found.");
 
     if (arguments.size() != func->arg_size() && !func->isVarArg())
         throw std::runtime_error("Argument count mismatch.");
@@ -369,21 +391,21 @@ llvm::Value* function::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value *struct_declaration::generate_code(cg::scope_data &scope) const {
-    std::vector<llvm::Type*> field_types;
-    std::vector<std::string_view> field_names;
+    std::vector<llvm::Type*> field_llvm_types;
+    std::vector<ast::nodes::type_instance> field_decls;
 
-    field_types.reserve(this->fields.size());
+    field_llvm_types.reserve(this->fields.size());
     for (const auto &field : this->fields) {
-        field_types.emplace_back(get_llvm_type(field.type, scope));
-        field_names.emplace_back(field.var_name);
+        field_llvm_types.emplace_back(get_llvm_type(field.type, scope));
+        field_decls.emplace_back(field.type, field.var_name);
     }
 
     if (scope.struct_table->contains(struct_name))
         throw std::runtime_error("Struct already exists in symbol table.");
 
     scope.struct_table->emplace(struct_name, struct_definition {
-        llvm::StructType::create(scope.context, field_types, struct_name),
-        std::move(field_names)
+        llvm::StructType::create(scope.context, field_llvm_types, struct_name),
+        std::move(field_decls)
     });
 
     return nullptr;
@@ -421,16 +443,10 @@ llvm::Value* bin_op::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* assignment::generate_code(cg::scope_data &scope) const {
-    auto *l_val = this->lhs->generate_code(scope);
+    auto *l_val = lhs->generate_code(scope);
     auto *r_val = op ?
                     cg::generate_bin_op(lhs, rhs, *op, scope) :
-                    this->rhs->generate_code(scope);
+                    rhs->generate_code(scope);
 
-    if (!l_val->getType()->isPointerTy())
-        throw std::runtime_error("Cannot assign to non-pointer type.");
-
-    return scope.builder.CreateStore(
-            r_val,
-            l_val
-    );
+    return scope.builder.CreateStore(r_val, l_val);
 }

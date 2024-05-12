@@ -6,6 +6,7 @@
 
 #include "basic_codegen.h"
 #include "../ast/data/data_maps.h"
+#include "types.h"
 
 using namespace cg;
 using namespace ast;
@@ -75,28 +76,41 @@ llvm::Value* generate_basic_op(const pseudo_bin_op &ref, cg::scope_data &scope) 
 }
 
 llvm::Value* cg::generate_accessor(const std::unique_ptr<ast::nodes::expression> &left, const std::unique_ptr<ast::nodes::expression> &right, cg::scope_data &scope) {
-    auto *l_ref = dynamic_cast<const nodes::var_ref*>(left.get());
-    auto *r_ref = dynamic_cast<const nodes::var_ref*>(right.get());
+    auto l_code = left->generate_code(scope);
+    auto r_code = right->generate_code(scope);
 
-    if (l_ref == nullptr)
-        throw std::runtime_error("Invalid left side of accessor.");
+    auto l_type = left->get_type();
+    auto r_type = right->get_type();
 
-    auto get_var = scope.get_variable(l_ref->var_name);
-    auto var_alloc = get_var.var_allocation;
-    llvm::Value *var_val = (llvm::Value*) get_var.var_allocation;
+    if (l_type.is_pointer()) {
+        return scope.builder.CreateGEP(
+            get_llvm_type(left->get_type().type, scope),
+            l_code,
+            r_code
+        );
+    }
 
-    if (get_var.struct_type == nullptr)
-        throw std::runtime_error("Invalid left side of accessor.");
+    const nodes::var_ref* get_var = dynamic_cast<nodes::var_ref*>(right.get());
 
-    auto *struct_type = get_var.struct_type->struct_type;
-    auto field_index = std::ranges::find(get_var.struct_type->field_names, r_ref->var_name);
+    if (!get_var)
+        throw std::runtime_error("Accessing non-member of a struct");
 
-    if (field_index == get_var.struct_type->field_names.end())
+    if (l_type.is_intrinsic())
+        throw std::runtime_error("Cannot access member of intrinsic type!");
+
+    auto struct_name = std::get<std::string_view>(l_type.type);
+    auto &struct_decl = scope.get_struct(struct_name);
+
+    auto field_index = std::ranges::find_if(struct_decl.field_decls, [get_var] (const auto &field) {
+        return field.var_name == get_var->var_name;
+    });
+
+    if (field_index == struct_decl.field_decls.end())
         throw std::runtime_error("Invalid right side of accessor.");
 
-    auto field_index_int = std::distance(get_var.struct_type->field_names.begin(), field_index);
+    auto field_index_int = std::distance(struct_decl.field_decls.begin(), field_index);
 
-    return scope.builder.CreateStructGEP(struct_type, var_val, field_index_int);
+    return scope.builder.CreateStructGEP(struct_decl.struct_type, l_code, field_index_int);
 }
 
 llvm::Value* cg::generate_bin_op(const std::unique_ptr<ast::nodes::expression> &left, const std::unique_ptr<ast::nodes::expression> &right, const ast::nodes::bin_op_type type, cg::scope_data &scope) {

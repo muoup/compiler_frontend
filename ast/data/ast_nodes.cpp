@@ -13,13 +13,12 @@ array_initializer::array_initializer(variable_type type, ast::nodes::initializer
 
     for (auto &val : values) {
         const auto val_type = val->get_type();
-        const auto expected_type = array_type.pointer_to();
 
-        if (val_type != expected_type) {
-            if (!val_type.is_intrinsic() || !expected_type.is_intrinsic())
+        if (val_type != array_type) {
+            if (!val_type.is_intrinsic() || !array_type.is_intrinsic())
                 throw std::runtime_error("Non-intrinsic types cannot be casted (yet)!");
 
-            val = std::make_unique<cast>(std::move(val), expected_type);
+            val = std::make_unique<cast>(std::move(val), array_type);
         }
     }
 }

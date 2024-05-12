@@ -165,6 +165,6 @@ namespace ast {
 
     template <typename T, typename U>
     bool instance_of(const U* val) {
-        return dynamic_cast<const U*>(val) != nullptr;
+        return dynamic_cast<const T*>(val) != nullptr;
     }
 }

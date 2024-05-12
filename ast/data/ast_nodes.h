@@ -139,8 +139,8 @@ namespace ast::nodes {
     struct assignment : expression {
         NODENAME("ASSIGNMENT");
         CHILDREN(lhs, rhs);
-
-        DETAILS(op ? ast::pm::find_key(ast::pm::binop_type_map, op.value()) : std::nullopt);
+        DETAILS(op ? std::make_optional(
+                ast::pm::find_key(ast::pm::binop_type_map, op.value())) : std::nullopt);
 
         std::unique_ptr<expression> lhs, rhs;
         std::optional<bin_op_type> op = std::nullopt;
@@ -184,15 +184,15 @@ namespace ast::nodes {
         std::string get_type_name() const {
             switch (value.index()) {
                 case UINT:
-                    return "u" + std::to_string(type_size);
+                    return "uint " + std::to_string(type_size);
                 case INT:
-                    return "i" + std::to_string(type_size);
+                    return "int " + std::to_string(type_size);
                 case FLOAT:
-                    return "f" + std::to_string(type_size);
+                    return "float " + std::to_string(type_size);
                 case CHAR:
-                    return "char";
+                    return "char " + std::to_string(type_size);
                 case STRING:
-                    return "char*";
+                    return "string " + std::string(std::get<std::string_view>(value));
                 default:
                     std::unreachable();
             }
@@ -202,7 +202,7 @@ namespace ast::nodes {
     struct cast : expression {
         NODENAME("CAST");
         CHILDREN(expr);
-        DETAILS("(", cast_type, ")");
+        DETAILS(cast_type);
 
         std::unique_ptr<expression> expr;
         variable_type cast_type;

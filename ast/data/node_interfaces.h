@@ -17,8 +17,9 @@
                 .add(__VA_ARGS__); \
         }
 #define DETAILS(...) \
+    bool has_print_details() const override { return true; };                 \
     void print_details() const override { \
-        print(":", __VA_ARGS__); \
+        __va_print(__VA_ARGS__);                \
     }
 
 namespace cg {
@@ -40,40 +41,19 @@ namespace ast::nodes {
         cg_container() = default;
 
         template<typename T>
-        cg_container&& add(const std::vector<std::unique_ptr<T>> &vec) {
-            for (const auto &node : vec) {
-                nodes.push_back(node.get());
-            }
-            return std::move(*this);
-        }
-
-        template<typename T>
-        cg_container&& add(const std::vector<T> &vec) {
-            for (const auto &node : vec) {
-                nodes.push_back(&node);
-            }
-            return std::move(*this);
-        }
-
-        template<typename T>
-        cg_container&& add(const std::unique_ptr<T> &vec) {
-            if (vec) {
-                nodes.push_back(vec.get());
-            }
-            return std::move(*this);
-        }
-
-        template<typename T>
-        cg_container&& add(const std::optional<T> &vec) {
-            if (vec.has_value()) {
-                nodes.push_back(&vec.value());
-            }
-            return std::move(*this);
-        }
-
-        template<typename T>
         cg_container&& add(const T &node) {
-            nodes.push_back(&node);
+            if constexpr (std::is_base_of_v<printable, T>) {
+                nodes.push_back(&node);
+            } else if constexpr (is_specialization<T, std::vector>) {
+                for (const auto &n : node) {
+                    add(n);
+                }
+            } else if constexpr (is_specialization<T, std::unique_ptr> || is_specialization<T, std::optional>) {
+                if (node)
+                    add(*node);
+            } else {
+                static_assert(false, "Invalid type passed to cg_container::add");
+            }
             return std::move(*this);
         }
 
@@ -86,31 +66,11 @@ namespace ast::nodes {
 
     struct printable {
         virtual std::string_view node_name() const {
-            return "PRINTABLE (SHOULD NOT PRINT)";
+            throw std::runtime_error("Printable node does not have a name");
         }
 
-        template <typename T>
-        static void print(const T& content) {
-            if constexpr (std::is_base_of_v<printable, T>) {
-                content.print();
-            } else {
-                std::cout << content << " ";
-            }
-        }
-
-        template <typename T>
-        static void print(const std::optional<T>& content) {
-            if (content.has_value()) {
-                print(content.value());
-            }
-        }
-
-        template <typename ...T>
-        static void print(const T &... var_args) {
-            (print(var_args), ...);
-        }
-
-        virtual void print_details() const {};
+        virtual bool has_print_details() const { return false; };
+        virtual void print_details() const { };
 
         virtual cg_container children() const {
             return cg_container();
@@ -118,6 +78,26 @@ namespace ast::nodes {
 
         void print(size_t depth = 0) const;
         virtual ~printable() = default;
+
+        template <typename ...T>
+        static void __va_print(const T &... var_args) {
+            (__print(var_args), ...);
+        }
+
+        template <typename T>
+        static void __print(const T& content) {
+            if constexpr (ast::nodes::is_specialization<T, std::unique_ptr> || ast::nodes::is_specialization<T, std::optional>) {
+                if (content) {
+                    __print(*content);
+                } else {
+                    std::cout << "none ";
+                }
+            } else if constexpr (std::is_base_of_v<printable, T>) {
+                content.print_details();
+            } else {
+                std::cout << content << " ";
+            }
+        }
     };
 
     /**

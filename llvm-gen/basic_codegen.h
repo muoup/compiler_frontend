@@ -8,7 +8,7 @@
 namespace cg {
     struct struct_definition {
         llvm::StructType* struct_type;
-        std::vector<std::string_view> field_names;
+        std::vector<ast::nodes::type_instance> field_decls;
     };
 
     struct scope_variable {

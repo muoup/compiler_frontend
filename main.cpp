@@ -32,9 +32,9 @@ int main() {
         }
 
         fn main() -> i8 {
-            test a = {1, 2};
+            i32[] arr = { 1, 2, 3, 4, 5 };
 
-            __clib_printf("%d", a.a);
+            return arr[2];
         }
     )";
 
@@ -45,7 +45,7 @@ int main() {
     std::cout << "-------------\n";
 
     // The AST sometimes prints after the codegen, so we need to flush the output stream.
-//    cg::generate_code(ast, llvm::outs());
+    cg::generate_code(ast, llvm::outs());
 
     return 0;
 }

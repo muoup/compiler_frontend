@@ -27,6 +27,8 @@ namespace ast::pm {
 
     nodes::var_ref parse_variable(lex_cptr &ptr, lex_cptr end);
 
+    nodes::bin_op parse_array_access(lex_cptr &ptr, const lex_cptr end);
+
     std::optional<nodes::literal> parse_literal(lex_cptr &ptr, lex_cptr end);
 
     nodes::match parse_match(lex_cptr &ptr, lex_cptr end);

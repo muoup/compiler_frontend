@@ -43,13 +43,15 @@ namespace ast::nodes {
         DETAILS(type_str());
 
         std::variant<intrinsic_types, std::string_view> type;
-        bool is_const, is_volatile;
+        bool is_var_ref = false, is_const, is_volatile;
+
+        int array_length;
 
         // May god help anyone who needs more than 255 levels of pointer indirection
         uint8_t pointer_depth = 0;
 
-        variable_type(std::variant<intrinsic_types, std::string_view> type, bool is_const = false, bool is_volatile = false, uint8_t pointer_depth = 0)
-            : type(type), is_const(is_const), is_volatile(is_volatile), pointer_depth(pointer_depth) {}
+        variable_type(std::variant<intrinsic_types, std::string_view> type, bool is_const = false, bool is_volatile = false, uint8_t pointer_depth = 0, int array_length = -1)
+            : type(type), is_const(is_const), is_volatile(is_volatile), pointer_depth(pointer_depth), array_length(array_length) {}
         ~variable_type() override = default;
 
         static variable_type void_type() {
@@ -58,11 +60,12 @@ namespace ast::nodes {
 
         variable_type pointer_to() const;
         variable_type dereference() const;
+        variable_type change_var_ref(bool new_val) const;
         bool is_intrinsic() const;
         bool is_pointer() const;
         bool is_fp() const;
         bool operator ==(const variable_type &other) const;
-        std::string_view type_str() const;
+        std::string type_str() const;
     };
 
     struct type_instance : printable {

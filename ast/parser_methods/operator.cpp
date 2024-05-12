@@ -1,5 +1,4 @@
 #include "operator.h"
-#include "../data/data_maps.h"
 #include "../util.h"
 
 namespace ast::pm {
@@ -11,8 +10,11 @@ namespace ast::pm {
     };
 
     std::unique_ptr<nodes::expression> load_if_necessary(std::unique_ptr<nodes::expression> node) {
-        if (dynamic_cast<nodes::var_ref*>(node.get()) != nullptr)
+        auto type = node->get_type();
+
+        if (node->get_type().is_var_ref) {
             return std::make_unique<nodes::load>(std::move(node));
+        }
 
         return node;
     }
@@ -21,12 +23,8 @@ namespace ast::pm {
         const auto l_type = left->get_type();
         const auto r_type = right->get_type();
 
-        if (type != nodes::bin_op_type::acc && type != nodes::bin_op_type::accdf) {
-            left = load_if_necessary(std::move(left));
-            right = load_if_necessary(std::move(right));
-        } else if (type == nodes::bin_op_type::accdf){
-            left = std::make_unique<nodes::load>(std::move(left));
-        }
+        left = load_if_necessary(std::move(left));
+        right = load_if_necessary(std::move(right));
 
         if (l_type == r_type) {
             return nodes::bin_op {
@@ -55,41 +53,63 @@ namespace ast::pm {
         auto l_type = left->get_type();
         auto r_type = right->get_type();
 
+        if (ast::instance_of<nodes::initializer_list>(right.get())) {
+            if (additional_operator)
+                throw std::runtime_error("Cannot use additional operator with initializer list");
+
+            auto *initializer_list = dynamic_cast<nodes::initializer_list*>(right.get());
+
+            if (l_type.array_length != 0) {
+                if (l_type.array_length == -1) {
+                    auto *var_ref = dynamic_cast<nodes::initialization*>(left.get());
+
+                    if (!var_ref)
+                        throw std::runtime_error("Cannot auto-complete array initialization for non-variable");
+
+                    var_ref->variable.type.array_length = initializer_list->values.size();
+                    l_type = var_ref->get_type();
+                }
+
+                if (l_type.array_length < initializer_list->values.size())
+                    throw std::runtime_error("Initializer list is too long");
+
+                if (l_type.array_length != initializer_list->values.size())
+                    throw std::runtime_error("Compiler cannot auto-complete array initialization yet");
+
+                right = std::make_unique<nodes::array_initializer>(
+                    l_type.dereference(), std::move(initializer_list->values)
+                );
+            } else if (!l_type.is_intrinsic() && !l_type.is_pointer()) {
+                right = std::make_unique<nodes::struct_initializer>(
+                    l_type.type_str(), std::move(initializer_list->values)
+                );
+            } else {
+                throw std::runtime_error("Cannot assign array initializer to primitive/pointer non-array type");
+            }
+        } else {
+            right = std::make_unique<nodes::cast>(
+                std::move(right),
+                nodes::variable_type {
+                    l_type
+                }
+            );
+        }
+
         if (l_type == r_type) {
             if (!additional_operator.has_value() || l_type.is_intrinsic() && r_type.is_intrinsic()) {
                 return nodes::assignment {
-                    std::move(left),
-                    std::move(right),
-                    additional_operator
+                        std::move(left),
+                        std::move(right),
+                        additional_operator
                 };
             }
 
             throw std::runtime_error("Non-intrinsic types cannot be casted (yet)!");
         }
 
-        if (!l_type.is_intrinsic() && ast::instance_of<nodes::initializer_list>(right.get())) {
-            auto *initializer_list = dynamic_cast<nodes::initializer_list*>(right.get());
-
-            auto struct_initializer = nodes::struct_initializer {
-                std::get<std::string_view>(l_type.type),
-                std::move(initializer_list->values)
-            };
-
-            return nodes::assignment {
-                std::move(left),
-                std::make_unique<nodes::struct_initializer>(std::move(struct_initializer)),
-                additional_operator
-            };
-        }
-
         return nodes::assignment {
             std::move(left),
-            std::make_unique<nodes::cast>(
-                std::move(right),
-                nodes::variable_type {
-                    l_type
-                }
-            ),
+            std::move(right),
             additional_operator
         };
     }

@@ -8,7 +8,7 @@ namespace llvm {
 }
 
 namespace ast::nodes {
-    struct variable_type;
+    struct variable_tvar_valype;
     struct type_instance;
 }
 

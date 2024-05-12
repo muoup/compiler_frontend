@@ -86,11 +86,23 @@ nodes::scope_block pm::parse_body(lex_cptr &ptr, lex_cptr end) {
     return nodes::scope_block { std::move(stmts) };
 }
 
-nodes::variable_type pm::parse_var_type(lex_cptr &ptr, lex_cptr) {
-    const auto is_const = !test_token_val(ptr, "mut").has_value();
+nodes::variable_type pm::parse_var_type(lex_cptr &ptr, lex_cptr end) {
     const auto is_volatile = test_token_val(ptr, "volatile").has_value();
+    const auto is_const = !test_token_val(ptr, "mut").has_value();
     const auto type = assert_token(ptr, is_variable_identifier)->span;
+    int array_length = 0;
     uint8_t pointer_count = 0;
+
+    if (test_token_val(ptr, "[")) {
+        if (auto len = test_token_type(ptr, lex::lex_type::INT_LITERAL))
+            std::from_chars((*len)->span.data(), (*len)->span.data() + (*len)->span.size(), array_length);
+        else
+            array_length = -1;
+
+        pointer_count++;
+
+        assert_token_val(ptr, "]");
+    }
 
     while (test_token_val(ptr, "*"))
         pointer_count++;
@@ -100,14 +112,16 @@ nodes::variable_type pm::parse_var_type(lex_cptr &ptr, lex_cptr) {
             *intrinsicType,
             is_const,
             is_volatile,
-            pointer_count
+            pointer_count,
+            array_length
         };
     } else {
         return nodes::variable_type {
             type,
             is_const,
             is_volatile,
-            pointer_count
+            pointer_count,
+            array_length
         };
     }
 }

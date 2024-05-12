@@ -138,6 +138,6 @@ std::optional<lex_cptr> ast::find_by_tok_type(const lex_cptr start, const lex_cp
 }
 
 bool ast::is_variable_identifier(const lex_cptr token) {
-    return token->type == lex::lex_type::IDENTIFIER
-        || token->type == lex::lex_type::PRIMITIVE;
+    return token->type == lex::lex_type::PRIMITIVE
+        || struct_types.contains(token->span);
 }
