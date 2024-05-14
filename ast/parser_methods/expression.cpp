@@ -7,93 +7,309 @@
 #include "operator.h"
 #include "statement.h"
 #include "../../lexer/lex.h"
-#include "../util_methods.h"
+#include "../util.h"
+#include "program.h"
+#include "../data/data_maps.h"
 
 using namespace ast;
-
-void make_var_raw(std::unique_ptr<nodes::expression>& expr) {
-    if (auto unop = dynamic_cast<nodes::un_op*>(expr.get()); unop) {
-        make_var_raw(unop->value);
-    } else if (auto var_ref = dynamic_cast<nodes::var_ref*>(expr.get()); var_ref) {
-        expr.release();
-        expr = std::make_unique<nodes::raw_var>(var_ref->name);
-    }
-
-    return;
-    //throw std::runtime_error("Invalid expression type");
-}
+using namespace ast::pm;
 
 std::unique_ptr<nodes::expression> pm::parse_expression(lex_cptr &ptr, const lex_cptr end) {
+    if (auto un_op = find_element(unop_type_map,ptr->span))
+        return parse_unop(ptr, end);
+
+    if (auto literal = parse_literal(ptr, end))
+        return std::make_unique<nodes::literal>(std::move(literal.value()));
+
+    if (peek(ptr, end)->span == "(")
+        return parse_between(ptr, parse_expr_tree);
+
+    if (peek(ptr, end)->span == "{")
+        return std::make_unique<nodes::initializer_list>(parse_initializer_list(ptr, end));
+
+    if (peek(ptr, end)->span == "match")
+        return std::make_unique<nodes::match>(parse_match(ptr, end));
+
+    if (is_variable_identifier(ptr))
+        return std::make_unique<nodes::initialization>(parse_initialization(ptr, end));
+
+    if (try_peek_type(ptr, end, lex::lex_type::IDENTIFIER) && try_peek_val(ptr, end, "(", 1))
+        return std::make_unique<nodes::method_call>(parse_method_call(ptr, end));
+
+    if (try_peek_type(ptr, end, lex::lex_type::IDENTIFIER) && try_peek_val(ptr, end, "[", 1))
+        return std::make_unique<nodes::bin_op>(parse_array_access(ptr, end));
+
+    if (try_peek_type(ptr, end, lex::lex_type::IDENTIFIER))
+        return std::make_unique<nodes::var_ref>(parse_variable(ptr, end));
+
+    return nullptr;
+}
+
+std::unique_ptr<nodes::expression> pm::parse_expr_tree(lex_cptr &ptr, const lex_cptr end) {
     std::stack<std::unique_ptr<nodes::expression>> expr_stack;
-    std::stack<std::unique_ptr<nodes::bin_op>> binop_stack;
-
-    const auto gen_expr = [&ptr, end] -> std::unique_ptr<nodes::expression> {
-        auto val = parse_value(ptr, end);
-
-        if (val)
-            return val;
-
-        if (ptr >= end - 1)
-            throw std::runtime_error("Expected value");
-
-        return std::make_unique<nodes::un_op>(parse_unop(ptr, end));
-    };
+    std::stack<nodes::bin_op_type> binop_stack;
 
     const auto combine_back = [&expr_stack, &binop_stack] {
-        auto& top_op = binop_stack.top();
-
-        top_op->right = std::move(expr_stack.top());
-        expr_stack.pop();
-
-        top_op->left = std::move(expr_stack.top());
-        expr_stack.pop();
-
-        expr_stack.emplace(std::move(top_op));
+        nodes::bin_op_type top_op = binop_stack.top();
         binop_stack.pop();
+        std::unique_ptr<nodes::expression> r_expr = std::move(expr_stack.top());
+        expr_stack.pop();
+        std::unique_ptr<nodes::expression> l_expr = std::move(expr_stack.top());
+        expr_stack.pop();
+
+        expr_stack.emplace(
+            std::make_unique<nodes::bin_op>(
+                    create_bin_op(std::move(l_expr), std::move(r_expr), top_op)
+            )
+        );
     };
 
-    expr_stack.emplace(gen_expr());
+    expr_stack.emplace(parse_expression(ptr, end));
 
     while (ptr < end) {
-        if (const auto tok = test_token_type(ptr, lex::lex_type::ASSN_SYMBOL)) {
-            while (!binop_stack.empty())
-                combine_back();
-
+        if (peek(ptr, end)->type == lex::lex_type::ASSN_SYMBOL) {
+            auto assn_type = parse_assn(end, ptr);
             auto lhs = std::move(expr_stack.top());
+            auto rhs = parse_expr_tree(ptr, end);
+            rhs = load_if_necessary(std::move(rhs));
+
             expr_stack.pop();
 
-            make_var_raw(lhs);
-
-            auto rhs = parse_expression(ptr, end);
-            const auto assn_str = tok.value()->span;
-
-            if (assn_str.size() == 1) {
-                return std::make_unique<nodes::assignment>(std::move(lhs), std::move(rhs));
-            }
-
-            auto binop = get_binop(std::string_view { assn_str.begin(), assn_str.end() - 1 });
-
-            if (!binop)
-                throw std::runtime_error("Invalid assignment operator");
-
             return std::make_unique<nodes::assignment>(
-                std::move(lhs),
-                std::move(rhs),
-                binop.value()
+                    create_assignment(std::move(lhs), std::move(rhs), assn_type)
             );
         }
 
-        auto r_op = std::make_unique<nodes::bin_op>(parse_binop(ptr, end));
+        auto bin_op = parse_binop(ptr, end);
 
-        while (!binop_stack.empty() && get_prec(*r_op) <= get_prec(*binop_stack.top()))
+        if (bin_op == std::nullopt)
+            break;
+
+        while (!binop_stack.empty() && *find_element(binop_prec, *bin_op) <= *find_element(binop_prec, binop_stack.top()))
             combine_back();
 
-        expr_stack.emplace(gen_expr());
-        binop_stack.emplace(std::move(r_op));
+        expr_stack.emplace(parse_expression(ptr, end));
+        binop_stack.emplace(*bin_op);
     }
 
     while (!binop_stack.empty())
         combine_back();
 
     return std::move(expr_stack.top());
+}
+
+std::unique_ptr<nodes::expression> pm::parse_unop(lex_cptr &ptr, const lex_cptr end) {
+    const auto operator_type = assert_token_type(ptr, lex::lex_type::EXPR_SYMBOL)->span;
+    auto expr = parse_expression(ptr, end);
+
+    if (!expr)
+        throw std::runtime_error("Expected value after operator");
+
+    auto unop = *find_element(unop_type_map, operator_type);
+
+    switch (unop) {
+        case nodes::un_op_type::addr_of:
+            return std::make_unique<nodes::expression_shield>(
+                std::move(expr)
+            );
+        case nodes::un_op_type::deref:
+            return std::make_unique<nodes::load>(
+                std::move(expr)
+            );
+        default:
+            return std::make_unique<nodes::un_op>(
+                unop,
+                std::move(expr)
+            );
+    }
+}
+
+std::optional<nodes::bin_op_type> pm::parse_binop(lex_cptr &ptr, const lex_cptr) {
+    auto op = test_token_type(ptr, lex::lex_type::EXPR_SYMBOL);
+
+    if (!op)
+        return std::nullopt;
+
+    return find_element(binop_type_map,(*op)->span);
+}
+
+std::optional<nodes::bin_op_type> pm::parse_assn(const ast::lex_cptr, ast::lex_cptr &ptr) {
+    auto type = assert_token_type(ptr, lex::lex_type::ASSN_SYMBOL)->span;
+
+    if (type.size() == 1)
+        return std::nullopt;
+
+    auto op = type.substr(0, 1);
+    auto bin_op = find_element(binop_type_map, op);
+
+    if (!bin_op)
+        throw std::runtime_error("Invalid assignment operator");
+
+    return bin_op;
+}
+
+std::optional<nodes::literal> pm::parse_literal(lex_cptr &ptr, const lex_cptr end) {
+    int i = 0;
+    double d = 0;
+
+    switch (peek(ptr, end)->type) {
+        case lex::lex_type::INT_LITERAL:
+            std::from_chars(peek(ptr, end)->span.data(), peek(ptr, end)->span.data() + peek(ptr, end)->span.size(), i);
+            consume(ptr, end);
+            return nodes::literal { i };
+        case lex::lex_type::FLOAT_LITERAL:
+            std::from_chars(peek(ptr, end)->span.data(), peek(ptr, end)->span.data() + peek(ptr, end)->span.size(), d);
+            consume(ptr, end);
+            return nodes::literal { d };
+        case lex::lex_type::STRING_LITERAL:
+            return nodes::literal { consume(ptr, end)->span };
+        case lex::lex_type::CHAR_LITERAL:
+            return nodes::literal { consume(ptr, end)->span.front() };
+        default:
+            return std::nullopt;
+    }
+}
+
+nodes::type_instance pm::parse_type_instance(lex_cptr &ptr, const lex_cptr end) {
+    if (test_token_val(ptr, "...")) {
+        return nodes::type_instance {
+            nodes::variable_type {
+                nodes::intrinsic_type::infer_type,
+            },
+            "..."
+        };
+    }
+
+    auto val_type = pm::parse_var_type(ptr, end);
+    auto type = test_token_type(ptr, lex::lex_type::IDENTIFIER);
+
+    return nodes::type_instance {
+            val_type,
+            type ? (*type)->span : ""
+    };
+}
+
+nodes::method_call pm::parse_method_call(lex_cptr &ptr, const lex_cptr end) {
+    auto call = nodes::method_call {
+            consume(ptr, end)->span,
+            parse_between(ptr, "(", parse_expression_list)
+    };
+
+    auto fn = *find_element(function_prototypes, call.method_name);
+
+    for (auto i = 0; i < call.arguments.size(); i++) {
+        auto& arg = call.arguments[i];
+        arg = load_if_necessary(std::move(arg));
+
+        nodes::variable_type expected_type = arg->get_type();
+
+        if (i < fn->params.data.size()) {
+            expected_type = fn->params.data[i].type;
+        } else if (fn->params.is_var_args) {
+            if (!expected_type.is_pointer()) {
+                expected_type = nodes::variable_type {
+                    nodes::intrinsic_type::i32,
+                };
+            }
+        }
+        else {
+            throw std::runtime_error("Too many arguments for function");
+        }
+
+        if (arg->get_type() != expected_type) {
+            arg = std::make_unique<nodes::cast>(
+                std::move(arg),
+                expected_type
+            );
+        }
+    }
+
+    return call;
+}
+
+nodes::bin_op pm::parse_array_access(lex_cptr &ptr, const lex_cptr end) {
+    const auto var_name = assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span;
+    auto array_index = load_if_necessary(
+            parse_between(ptr, "[", parse_expr_tree)
+    );
+
+    return nodes::bin_op{
+            nodes::bin_op_type::acc,
+            std::make_unique<nodes::var_ref>(
+                    var_name,
+                    get_var_type(var_name)
+            ),
+            std::move(array_index)
+    };
+
+}
+
+nodes::var_ref pm::parse_variable(ast::lex_cptr &ptr, const ast::lex_cptr end) {
+    auto name = assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span;
+    auto type = get_var_type(name);
+
+    return nodes::var_ref {
+            name,
+            type
+    };
+}
+
+nodes::match pm::parse_match(ast::lex_cptr &ptr, const ast::lex_cptr end) {
+    nodes::match match;
+
+    assert_token_val(ptr, "match");
+    match.match_expr = parse_expression(ptr, end);
+
+    assert_token_val(ptr, "{");
+
+    while (peek(ptr, end)->span != "}") {
+        if (test_token_val(ptr, "default")) {
+            match.default_case = std::make_unique<nodes::scope_block>(parse_body(ptr, end));
+            break;
+        }
+
+        assert_token_val(ptr, "case");
+
+        auto match_expr = parse_expr_tree(ptr, end);
+        auto body = parse_body(ptr, end);
+
+        match.cases.emplace_back(nodes::match_case {
+            std::move(match_expr),
+            std::move(body)
+        });
+        if (!test_token_val(ptr, ","))
+            break;
+    }
+
+    assert_token_val(ptr, "}");
+
+    return match;
+}
+
+nodes::initializer_list pm::parse_initializer_list(ast::lex_cptr &ptr, const ast::lex_cptr end) {
+    return nodes::initializer_list {
+            parse_between(ptr, parse_expression_list)
+    };
+}
+
+nodes::struct_initializer pm::parse_struct_initializer(ast::lex_cptr &ptr, const ast::lex_cptr end) {
+    auto struct_type = assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span;
+
+    if (!struct_types.contains(struct_type))
+        throw std::runtime_error(std::format("Struct {} not found", struct_type));
+
+    return nodes::struct_initializer {
+        struct_type,
+        parse_initializer_list(ptr, end).values
+    };
+}
+
+nodes::initialization pm::parse_initialization(lex_cptr &ptr, const lex_cptr end) {
+    auto type_inst = parse_type_instance(ptr, end);
+
+    scope_stack.back().emplace(type_inst.var_name, type_inst.type);
+
+    return nodes::initialization {
+        std::move(type_inst)
+    };
 }

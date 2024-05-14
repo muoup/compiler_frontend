@@ -10,10 +10,29 @@ namespace ast::pm {
     const extern std::unordered_map<std::string_view, nodes::un_op_type> unop_type_map;
     const extern std::unordered_map<std::string_view, nodes::assn_type> assign_type_map;
 
-    const extern std::unordered_map<std::string_view, nodes::intrinsic_types> intrin_map;
+    const extern std::unordered_map<std::string_view, nodes::intrinsic_type> intrin_map;
 
-    const extern std::unordered_map<ast::nodes::bin_op_type, llvm::Instruction::BinaryOps> binop_map;
+    const extern std::unordered_map<ast::nodes::bin_op_type, llvm::Instruction::BinaryOps> basic_binop_map;
 
     const extern std::unordered_map<ast::nodes::bin_op_type, llvm::CmpInst::Predicate> i_cmp_map;
     const extern std::unordered_map<ast::nodes::bin_op_type, llvm::CmpInst::Predicate> f_cmp_map;
+
+    template<typename T, typename U>
+    std::optional<U> find_element(const std::unordered_map<T, U> &map, const T &key) {
+        const auto it = map.find(key);
+
+        return it != map.end() ?
+            std::make_optional(it->second) :
+            std::nullopt;
+    }
+
+    template<typename T, typename U>
+    std::optional<T> find_key(const std::unordered_map<T, U> &map, const U &value) {
+        for (const auto &[key, val] : map) {
+            if (val == value)
+                return std::make_optional(key);
+        }
+
+        return std::nullopt;
+    }
 }

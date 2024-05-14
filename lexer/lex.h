@@ -31,7 +31,15 @@ namespace lex {
     inline std::unordered_set<std::string_view> KEYWORD_SET {
         "if", "while", "for", "switch",
 
-        "mut", "extern", "volatile"
+        "mut", "extern", "volatile",
+
+        "fn",
+
+        "struct",
+
+        "match", "case", "default",
+
+        "as",
 
         "return"
     };
@@ -47,12 +55,16 @@ namespace lex {
     inline std::unordered_set<std::string_view> EXPR_SYMBOL {
         "+", "-", "*", "/", "%",
         "!", "&", "|", "^", "~", "<", ">", "?", ":",
-        "<<", ">>"
+        "<<", ">>",
 
-        ",", ".", "#", ";",
+        ",", "#", ";",
+
+        ".", "->",
 
         "==", "!=", "<=", ">=", "&&", "||",
-        "++", "--", "**"
+        "++", "--", "**",
+
+        "..."
     };
 
     inline std::unordered_set<std::string_view> ASSN_SYMBOL = {
