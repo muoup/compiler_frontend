@@ -15,32 +15,38 @@ scope_data gen_inner_scope(scope_data &scope) {
     scope_data data = scope;
     data.entry = llvm::BasicBlock::Create(data.context, "entry", data.current_function);
     data.builder.SetInsertPoint(data.entry);
-    data.tables.emplace_back(std::make_shared<var_table>());
+    data.var_tables.emplace_back(std::make_shared<var_table>());
     return data;
 }
 
-const scope_variable& scope_data::add_variable(std::string_view name, llvm::Type *type, bool const_) const {
-    if (tables.back()->contains(name))
+template <typename T>
+using generic_table = std::vector<std::shared_ptr<std::unordered_map<std::string_view, T>>>;
+
+template <typename T>
+const T& add_to_table(const generic_table<T> &table, std::string_view name, T value) {
+    if (table.back()->contains(name))
         throw std::runtime_error("Variable already exists in symbol table.");
 
-    auto* alloca_inst = builder.CreateAlloca(type);
-    alloca_inst->setName(name);
-
-    tables.back()->emplace(
-        name,
-        scope_variable { alloca_inst, const_ }
-    );
-
-    return get_variable(name);
+    table.back()->emplace(name, value);
+    return table.back()->at(name);
 }
 
-const scope_variable& scope_data::get_variable(std::string_view name) const {
-    for (auto it = tables.rbegin(); it != tables.rend(); ++it) {
+template <typename T>
+const T& get_from_table(const generic_table<T> &table, std::string_view name) {
+    for (auto it = table.rbegin(); it != table.rend(); ++it) {
         if ((*it)->contains(name))
             return (*it)->at(name);
     }
 
-    throw std::runtime_error("Variable not found in symbol table.");
+    throw std::runtime_error("Index could not be found in table.");
+}
+
+const scope_variable& scope_data::get_variable(std::string_view name) const {
+    return get_from_table(var_tables, name);
+}
+
+const struct_definition& scope_data::get_struct(std::string_view name) const {
+    return struct_table->at(name);
 }
 
 void cg::generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream) {
@@ -52,7 +58,8 @@ void cg::generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream)
         context,
         module,
         builder,
-        std::vector { std::make_shared<var_table>() }
+        std::vector { std::make_shared<var_table>() },
+        std::make_shared<std::unordered_map<std::string_view, struct_definition>>()
     };
 
     root.generate_code(scope);
@@ -60,11 +67,8 @@ void cg::generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream)
 }
 
 llvm::Value* root::generate_code(cg::scope_data &scope) const {
-//    for (const auto &var : global_vars)
-//        var.generate_code(scope);
-
-    for (const auto &fn : functions)
-        fn.generate_code(scope);
+    for (const auto &prog_stmts : program_level_statements)
+        prog_stmts->generate_code(scope);
 
     return nullptr;
 }
@@ -97,63 +101,130 @@ llvm::Value* literal::generate_code(cg::scope_data &scope) const {
     }
 }
 
+llvm::Value* cast::generate_code(cg::scope_data &scope) const {
+    auto *expr_val = expr->generate_code(scope);
+    auto *llvm_cast_type = get_llvm_type(cast_type, scope);
+
+    auto expr_type = expr->get_type();
+
+    if (expr_type == cast_type)
+        return expr_val;
+
+    if (expr_type.is_pointer() && cast_type.is_pointer())
+        return scope.builder.CreatePointerCast(expr_val, llvm_cast_type);
+
+    if (!expr_type.is_intrinsic() || !cast_type.is_intrinsic())
+        throw std::runtime_error("Cannot cast non-intrinsic types.");
+
+    if (expr_type.is_int() && cast_type.is_int())
+        return scope.builder.CreateIntCast(expr_val, llvm_cast_type, cast_type.is_signed());
+
+    if (!expr_type.is_int() && !cast_type.is_int())
+        return scope.builder.CreateFPCast(expr_val, llvm_cast_type);
+
+    if (expr_type.is_int() && cast_type.is_fp()) {
+        if (expr_type.is_signed())
+            return scope.builder.CreateSIToFP(expr_val, llvm_cast_type);
+        else
+            return scope.builder.CreateUIToFP(expr_val, llvm_cast_type);
+    }
+
+    if (expr_type.is_fp() && cast_type.is_int()) {
+        if (cast_type.is_signed())
+            return scope.builder.CreateFPToSI(expr_val, llvm_cast_type);
+        else
+            return scope.builder.CreateFPToUI(expr_val, llvm_cast_type);
+    }
+
+    throw std::runtime_error("Invalid cast.");
+}
+
+llvm::Value* load::generate_code(cg::scope_data &scope) const {
+    auto *val = expr->generate_code(scope);
+
+    if (!val->getType()->isPointerTy())
+        throw std::runtime_error("Cannot dereference non-pointer type.");
+
+    auto *new_type = get_llvm_type(get_type(), scope);
+
+    return scope.builder.CreateLoad(new_type, val);
+}
+
+llvm::Value* expression_shield::generate_code(cg::scope_data &scope) const {
+    return expr->generate_code(scope);
+}
+
+llvm::Value* initializer_list::generate_code(cg::scope_data &scope) const {
+    throw std::runtime_error("Initializer lists are not yet implemented.");
+}
+
+llvm::Value* struct_initializer::generate_code(cg::scope_data &scope) const {
+    auto struct_def = scope.get_struct(struct_type);
+    auto struct_size = struct_def.field_decls.size();
+
+    llvm::Value* aggregate = llvm::UndefValue::get(struct_def.struct_type);
+
+    for (auto i = 0; i < struct_size; i++)
+        aggregate = scope.builder.CreateInsertValue(aggregate, values[i]->generate_code(scope), i);
+
+    return aggregate;
+}
+
+llvm::Value* array_initializer::generate_code(cg::scope_data &scope) const {
+    auto type = get_llvm_type(array_type, scope);
+
+    llvm::Value* aggregate = llvm::UndefValue::get(llvm::ArrayType::get(type, values.size()));
+
+    for (auto i = 0; i < values.size(); ++i)
+        aggregate = scope.builder.CreateInsertValue(aggregate, values[i]->generate_code(scope), i);
+
+    return aggregate;
+}
+
 llvm::Value* initialization::generate_code(cg::scope_data &scope) const {
-    return scope.add_variable(
-        variable.var_name,
-        get_llvm_type(variable.type, scope.context)
-    ).var_allocation;
+    auto init_type = get_type();
+    auto type = get_llvm_type(init_type, scope);
+
+    if (init_type.array_length == -1)
+        throw std::runtime_error("Cannot initialize array with unknown length.");
+
+    if (init_type.array_length)
+        type = llvm::ArrayType::get(type, init_type.array_length);
+
+    return add_to_table(scope.var_tables, variable.var_name, scope_variable {
+        .var_allocation = scope.builder.CreateAlloca(type),
+        .struct_type = get_struct_ref(variable.type, scope),
+        .is_const = false
+    }).var_allocation;
 }
 
 llvm::Value* method_call::generate_code(cg::scope_data &scope) const {
-    llvm::Function* func = method_name.starts_with(libc_prefix) ?
-                           get_libc_fn(method_name, scope) :
-                           scope.module->getFunction(method_name);
-
-    std::vector<llvm::Value*> args;
-
-    for (auto i = 0; i < arguments.size(); ++i) {
-        auto child = arguments[i]->generate_code(scope);
-
-        if (i < func->arg_size())
-            child = attempt_cast(child, func->getArg(i)->getType(), scope);
-        else if (i >= func->arg_size() && !func->isVarArg())
-            throw std::runtime_error("Argument count mismatch.");
-        else
-            child = varargs_cast(child, scope);
-
-        args.emplace_back(child);
-    }
+    llvm::Function* func = scope.module->getFunction(method_name);
 
     if (!func)
         throw std::runtime_error("Function not found.");
 
+    std::vector<llvm::Value*> args;
+
+    for (auto &arg : arguments)
+        args.emplace_back(arg->generate_code(scope));
+
     if (arguments.size() != func->arg_size() && !func->isVarArg())
         throw std::runtime_error("Argument count mismatch.");
+
+    auto call_param = this->arguments[0]->get_type();
 
     return scope.builder.CreateCall(func, args);
 }
 
 llvm::Value* var_ref::generate_code(cg::scope_data &scope) const {
-    auto var = scope.get_variable(name);
-    auto alloc_type = var.var_allocation->getAllocatedType();
-
-    return scope.builder.CreateLoad(
-        alloc_type,
-        var.var_allocation
-    );
-}
-
-llvm::Value *raw_var::generate_code(cg::scope_data &scope) const {
-    return scope.get_variable(name).var_allocation;
+    return scope.get_variable(var_name).var_allocation;
 }
 
 llvm::Value* return_op::generate_code(cg::scope_data &scope) const {
     if (val) {
         auto ret_val = val->generate_code(scope);
         auto ret_type = scope.current_function->getReturnType();
-
-        if (ret_val->getType() != ret_type)
-            ret_val = attempt_cast(ret_val, ret_type, scope);
 
         return scope.builder.CreateRet(ret_val);
     }
@@ -191,6 +262,61 @@ llvm::Value *if_statement::generate_code(cg::scope_data &scope) const {
     return nullptr;
 }
 
+llvm::Value* match::generate_code(cg::scope_data &scope) const {
+    auto switch_start = llvm::BasicBlock::Create(scope.context, "switch_start", scope.current_function);
+
+    std::vector<llvm::BasicBlock*> cond_blocks;
+    cond_blocks.reserve(cases.size());
+
+    for (const auto &case_ : cases) {
+        cond_blocks.emplace_back(case_.body.generate_code(scope));
+    }
+
+    auto *default_block = default_case ?
+                          default_case->generate_code(scope) :
+                          nullptr;
+
+    auto merge_block = llvm::BasicBlock::Create(scope.context, "merge", scope.current_function);
+
+    for (auto *block : cond_blocks) {
+        scope.builder.SetInsertPoint(block);
+        scope.builder.CreateBr(merge_block);
+    }
+
+    if (default_block) {
+        scope.builder.SetInsertPoint(default_block);
+        scope.builder.CreateBr(merge_block);
+    }
+
+    scope.builder.SetInsertPoint(switch_start);
+
+    default_block = default_block ? default_block : merge_block;
+
+    auto *cmp = match_expr->generate_code(scope);
+    auto *switch_inst = scope.builder.CreateSwitch(cmp, default_block, cases.size());
+
+    for (auto i = 0; i < cases.size(); ++i) {
+        auto *case_ = cases[i].match_expr->generate_code(scope);
+        auto *case_block = cond_blocks[i];
+        auto *case_const = llvm::dyn_cast<llvm::ConstantInt>(case_);
+
+        if (!case_const)
+            throw std::runtime_error("Match case must be a constant integer.");
+        if (!case_block)
+            throw std::runtime_error("Match case block must be a valid block.");
+
+        switch_inst->addCase(
+                case_const,
+                case_block
+        );
+    }
+
+    scope.builder.CreateBr(default_block);
+
+    scope.builder.SetInsertPoint(merge_block);
+    return nullptr;
+}
+
 llvm::Value* loop::generate_code(cg::scope_data &scope) const {
     const auto pre_init = scope.builder.GetInsertBlock();
 
@@ -218,6 +344,7 @@ llvm::Value *for_loop::generate_code(cg::scope_data &scope) const {
     auto pre_ins_pt = scope.builder.GetInsertBlock();
 
     auto *loop_body = body.generate_code(scope);
+    loop_body->setName("loop_body");
     auto *loop_iter = llvm::BasicBlock::Create(scope.context, "loop_iter", scope.current_function);
     auto *loop_cond = llvm::BasicBlock::Create(scope.context, "loop_cond", scope.current_function);
     auto *loop_merge = llvm::BasicBlock::Create(scope.context, "loop_merge", scope.current_function);
@@ -250,44 +377,57 @@ llvm::BasicBlock* scope_block::generate_code(cg::scope_data &scope) const {
     for (const auto &stmt : statements)
         stmt->generate_code(in_scope_block);
 
-    return in_scope_block.builder.GetInsertBlock();
+    return in_scope_block.entry;
+}
+
+llvm::Function* function_prototype::generate_code(cg::scope_data &scope) const {
+    llvm::Type *type = get_llvm_type(this->return_type, scope);
+
+    std::vector<llvm::Type*> llvm_parameters;
+
+    llvm_parameters.reserve(params.data.size());
+    for (const auto &param : params.data)
+        llvm_parameters.emplace_back(get_llvm_type(param.type, scope));
+
+    llvm::FunctionType *func_type = llvm::FunctionType::get(type, llvm_parameters, params.is_var_args);
+    llvm::Value *func_val = scope.module->getOrInsertFunction(fn_name, func_type).getCallee();
+    llvm::Function *func = llvm::cast<llvm::Function>(func_val);
+
+    for (auto i = 0; i < params.data.size(); ++i)
+        func->args().begin()[i].setName(params.data[i].var_name);
+
+    return func;
 }
 
 llvm::Value* function::generate_code(cg::scope_data &scope) const {
-    llvm::Type *type = get_llvm_type(this->return_type, scope.context);
-
-    std::vector<llvm::Type*> params;
-
-    params.reserve(param_types.size());
-    for (const auto &param : param_types)
-        params.emplace_back(get_llvm_type(param.type, scope.context));
-
-    llvm::FunctionType *func_type = llvm::FunctionType::get(type, llvm::ArrayRef<llvm::Type*> { params }, false);
-    llvm::Function *func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, fn_name, *scope.module);
+    auto *func = prototype->generate_code(scope);
 
     scope_data param_scope = gen_inner_scope(scope);
     param_scope.current_function = func;
-
-    for (auto i = 0; i < param_types.size(); ++i) {
-        auto arg = func->args().begin() + i;
-        arg->setName(param_types[i].var_name);
-
-//        body_scope.tables.back()->emplace(
-//            param_types[i].var_name,
-//            scope_variable { arg, true }
-//        );
-    }
 
     body.generate_code(param_scope);
     return func;
 }
 
-llvm::Value* bin_op::generate_code(cg::scope_data &scope) const {
-    return cg::generate_binop(
-            left->generate_code(scope),
-            right->generate_code(scope),
-            type, scope
-    );
+llvm::Value *struct_declaration::generate_code(cg::scope_data &scope) const {
+    std::vector<llvm::Type*> field_llvm_types;
+    std::vector<ast::nodes::type_instance> field_decls;
+
+    field_llvm_types.reserve(this->fields.size());
+    for (const auto &field : this->fields) {
+        field_llvm_types.emplace_back(get_llvm_type(field.type, scope));
+        field_decls.emplace_back(field.type, field.var_name);
+    }
+
+    if (scope.struct_table->contains(struct_name))
+        throw std::runtime_error("Struct already exists in symbol table.");
+
+    scope.struct_table->emplace(struct_name, struct_definition {
+        llvm::StructType::create(scope.context, field_llvm_types, struct_name),
+        std::move(field_decls)
+    });
+
+    return nullptr;
 }
 
 llvm::Value* un_op::generate_code(cg::scope_data &scope) const {
@@ -297,13 +437,6 @@ llvm::Value* un_op::generate_code(cg::scope_data &scope) const {
         using namespace ast::nodes;
         case un_op_type::log_not:
             return scope.builder.CreateNot(val);
-        case un_op_type::deref:
-            if (!val->getType()->isPointerTy())
-                throw std::runtime_error("Cannot dereference non-pointer type.");
-
-            return scope.builder.CreateLoad(val->getType(), val);
-        case un_op_type::addr_of:
-            return value->generate_code(scope);
         case un_op_type::bit_not:
             if (!val->getType()->isIntegerTy())
                 throw std::runtime_error("Cannot perform bitwise NOT on non-integer type.");
@@ -324,32 +457,21 @@ llvm::Value* un_op::generate_code(cg::scope_data &scope) const {
     }
 }
 
+llvm::Value* bin_op::generate_code(cg::scope_data &scope) const {
+    return cg::generate_bin_op(left, right, type, scope);
+}
+
 llvm::Value* assignment::generate_code(cg::scope_data &scope) const {
-    auto [bal_lhs, bal_rhs] = balance_sides(
-        lhs->generate_code(scope),
-        rhs->generate_code(scope),
-        scope
-    );
-
-    if (!bal_lhs->getType()->isPointerTy())
-        throw std::runtime_error("Cannot assign to non-pointer type.");
-
-    const auto lhs_ptr = static_cast<llvm::AllocaInst*>(bal_lhs);
-
-    if (lhs_ptr->getAllocatedType() != bal_rhs->getType())
-        bal_rhs = attempt_cast(bal_rhs, lhs_ptr->getAllocatedType(), scope);
+    auto *l_val = lhs->generate_code(scope);
+    auto *r_val = rhs->generate_code(scope);
 
     if (op) {
-        auto pre_val = scope.builder.CreateLoad(lhs_ptr->getAllocatedType(), lhs_ptr);
-        bal_rhs = cg::generate_binop(
-                pre_val,
-                bal_rhs,
-                *op, scope
+        r_val = scope.builder.CreateBinOp(
+                get_llvm_binop(*op, r_val->getType()->isFloatingPointTy()),
+                scope.builder.CreateLoad(r_val->getType(), l_val),
+                r_val
         );
     }
 
-    return scope.builder.CreateStore(
-            bal_rhs,
-            bal_lhs
-    );
+    return scope.builder.CreateStore(r_val, l_val);
 }

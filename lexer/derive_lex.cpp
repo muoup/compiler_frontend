@@ -49,15 +49,15 @@ std::optional<derived_lex> lex::derive_charlit(const str_ptr start, const str_pt
 }
 
 std::optional<derived_lex> lex::derive_expr_op(const str_ptr start, const str_ptr end) {
-    str_ptr to = start;
-
-    if (end - start > 2 && EXPR_SYMBOL.contains({ start, start + 2 })) {
-        ++to;
-    } else if (!EXPR_SYMBOL.contains({ start, start + 1 })) {
-        return std::nullopt;
+    if (std::string_view {start, start + 3} == "...") {
+        return derived_lex { lex_type::EXPR_SYMBOL, start, start + 2 };
+    } else if (end - start > 2 && EXPR_SYMBOL.contains({ start, start + 2 })) {
+        return derived_lex { lex_type::EXPR_SYMBOL, start, start + 1 };
+    } else if (EXPR_SYMBOL.contains({ start, start + 1 })) {
+        return derived_lex { lex_type::EXPR_SYMBOL, start, start };
     }
 
-    return derived_lex { lex_type::EXPR_SYMBOL, start, to };
+    return std::nullopt;
 }
 
 std::optional<derived_lex> lex::derive_assn_op(const str_ptr start, const str_ptr end) {

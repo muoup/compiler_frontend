@@ -5,10 +5,36 @@
 #include <span>
 #include <stdexcept>
 #include <vector>
+#include <unordered_map>
 
-#include "declarations.h"
+#include "util.h"
+#include "data/abstract_data.h"
+#include "data/ast_nodes.h"
+
+namespace lex {
+    struct lex_token;
+    enum class lex_type;
+}
 
 namespace ast {
+    extern std::vector<std::unordered_map<std::string_view, ast::nodes::variable_type>> scope_stack;
+    extern std::unordered_map<std::string_view, std::vector<ast::nodes::type_instance>> struct_types;
+    extern std::unordered_map<std::string_view, ast::nodes::function_prototype*> function_prototypes;
+
+    extern ast::nodes::function_prototype* current_function;
+
+    using lex_cptr = std::vector<lex::lex_token>::const_iterator;
+
+    template <typename T>
+    using parse_fn = T(*)(lex_cptr&, lex_cptr);
+
+    template <typename T>
+    using loop_fn = std::optional<T>(*)(lex_cptr&);
+
+    using parse_pred = bool(*)(lex_cptr);
+
+    std::optional<ast::nodes::variable_type> get_var_type(std::string_view var_name);
+
     void throw_unexpected(const lex::lex_token& token, std::string_view expected = "No explanation given.");
     void throw_unclosed(const lex::lex_token& token, std::string_view expected = "No explanation given.");
 
@@ -26,6 +52,12 @@ namespace ast {
 
         return opt.value();
     }
+
+    lex_cptr consume(lex_cptr &ptr, lex_cptr end);
+    lex_cptr peek(lex_cptr ptr, lex_cptr end, size_t offset = 0);
+
+    bool try_peek_type(lex_cptr ptr, lex_cptr end, lex::lex_type type, size_t offset = 0);
+    bool try_peek_val(lex_cptr ptr, lex_cptr end, std::string_view val, size_t offset = 0);
 
     std::optional<lex_cptr> test_token_val(lex_cptr &ptr, std::string_view val);
     std::optional<lex_cptr> test_token_val(lex_cptr &ptr, std::span<const std::string_view> vals);
@@ -77,8 +109,6 @@ namespace ast {
     template <typename T, typename lex_cptr>
     std::vector<T> parse_split(lex_cptr& ptr, const lex_cptr end, const std::string_view split_val, const parse_fn<T> fn) {
         std::vector<T> split;
-
-        // ++ptr;
 
         while (ptr < end) {
             split.emplace_back(
@@ -132,5 +162,10 @@ namespace ast {
 
             return ptr++;
         };
+    }
+
+    template <typename T, typename U>
+    bool instance_of(const U* val) {
+        return dynamic_cast<const T*>(val) != nullptr;
     }
 }
