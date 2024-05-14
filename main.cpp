@@ -1,27 +1,18 @@
 #include <iostream>
+#include "interface/file_reader.h"
 
-#include "ast/interface.h"
-#include "lexer/lex.h"
+int main(int argc, char** argv) {
+    if (argc == 1) {
+        std::cout << "Usage: " << argv[0] << " <file>\n";
+        return 1;
+    }
 
-int main() {
-    const auto* code = R"(
-        void test() {
-            for (i16 i = 0; i < 10; i += 1) {
-                __libc_printf("%d", i);
-            }
-        }
+    in::file_pipeline pipeline;
+    pipeline.load_file(argv[1])
+            .gen_lex()
+            .gen_ast();
 
-        i8 main() {
-            test();
-            return 0;
-        }
-    )";
-
-    const auto tokens = lex::lex(code);
-    const auto ast = ast::parse(tokens);
-
-    ast.print();
-    std::cout << "-------------\n";
+    pipeline.ast->print(0);
 
     return 0;
 }

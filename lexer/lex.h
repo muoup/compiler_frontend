@@ -7,11 +7,13 @@
 
 namespace lex {
     struct lex_token;
+
+    using lex_container = std::vector<lex_token>;
+
     using str_ptr = std::string_view::const_iterator;
-    using lex_ptr = std::vector<lex_token>::iterator;
+    using lex_ptr = lex_container::iterator;
 
     enum class lex_type {
-        NONE, // No token
         KEYWORD, // if, while, for, etc.
         PRIMITIVE, // i8, i16, i32, etc.
         IDENTIFIER, // Variable name, function name, etc.
@@ -31,7 +33,7 @@ namespace lex {
     inline std::unordered_set<std::string_view> KEYWORD_SET {
         "if", "while", "for", "switch",
 
-        "mut", "extern", "volatile"
+        "mut", "extern", "volatile",
 
         "return"
     };
@@ -47,7 +49,7 @@ namespace lex {
     inline std::unordered_set<std::string_view> EXPR_SYMBOL {
         "+", "-", "*", "/", "%",
         "!", "&", "|", "^", "~", "<", ">", "?", ":",
-        "<<", ">>"
+        "<<", ">>",
 
         ",", ".", "#", ";",
 
@@ -64,5 +66,5 @@ namespace lex {
         '{', '}', '(', ')', '[', ']'
     };
 
-    std::vector<lex_token> lex(std::string_view code);
+    lex_container lex(std::string_view code);
 }
