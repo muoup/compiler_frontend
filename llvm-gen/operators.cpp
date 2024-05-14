@@ -6,6 +6,7 @@
 
 #include "basic_codegen.h"
 #include "../ast/data/data_maps.h"
+#include "data.h"
 
 using namespace cg;
 
@@ -59,7 +60,7 @@ llvm::Value* cg::generate_binop(llvm::Value *lhs, llvm::Value *rhs,
     auto *rhs_casted = attempt_cast(rhs, lhs->getType(), scope);
     const bool is_fp = lhs->getType()->isFloatingPointTy();
 
-    if (auto it = ast::pm::binop_map.find(type); it != ast::pm::binop_map.end()) {
+    if (auto it = cg::binop_map.find(type); it != cg::binop_map.end()) {
         const auto bin_op_type = static_cast<llvm::Instruction::BinaryOps>(it->second + is_fp);
 
         return scope.builder.CreateBinOp(bin_op_type, lhs, rhs_casted);
@@ -69,9 +70,9 @@ llvm::Value* cg::generate_binop(llvm::Value *lhs, llvm::Value *rhs,
     llvm::CmpInst::Predicate pred;
 
     if (is_fp) {
-        pred = ast::pm::f_cmp_map.at(type);
+        pred = cg::f_cmp_map.at(type);
     } else {
-        pred = ast::pm::i_cmp_map.at(type);
+        pred = cg::i_cmp_map.at(type);
     }
 
     return is_fp ?

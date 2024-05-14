@@ -1,12 +1,13 @@
 #include "basic_codegen.h"
 
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/IRBuilder.h>
-
 #include "../ast/data/data_maps.h"
 #include "types.h"
 #include "libc_ref.h"
 #include "operators.h"
+
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Type.h>
 
 using namespace ast::nodes;
 using namespace cg;
@@ -212,6 +213,9 @@ llvm::Value* loop::generate_code(cg::scope_data &scope) const {
     return nullptr;
 }
 
+llvm::Value *expression_root::generate_code(cg::scope_data &scope) const {
+    return expr->generate_code(scope);
+}
 
 llvm::Value *for_loop::generate_code(cg::scope_data &scope) const {
     init->generate_code(scope);

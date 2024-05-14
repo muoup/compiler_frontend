@@ -1,9 +1,4 @@
-//
-// Created by zbv11 on 15-Apr-24.
-//
-
-#ifndef LLVM_FRONTEND_DATA_H
-#define LLVM_FRONTEND_DATA_H
+#pragma once
 
 #include <unordered_map>
 
@@ -14,12 +9,10 @@ namespace ast::nodes {
     enum class bin_op_type;
 }
 
-namespace cg::data {
+namespace cg {
 
     extern const std::unordered_map<ast::nodes::bin_op_type, llvm::Instruction::BinaryOps> binop_map;
     extern const std::unordered_map<ast::nodes::bin_op_type, llvm::CmpInst::Predicate> i_cmp_map;
     extern const std::unordered_map<ast::nodes::bin_op_type, llvm::CmpInst::Predicate> f_cmp_map;
 
-} // cg
-
-#endif //LLVM_FRONTEND_DATA_H
+}

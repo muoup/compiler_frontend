@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
 project(llvm_frontend)
 
+# Add compiler flags
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ferror-limit=0")
+
 # Since LLVM is a rather large dependency, it can be disabled for
 # non-codegen development on machines which do not have LLVM installed.
 # For all master branch builds, LLVM should be enabled by default.
@@ -18,7 +21,6 @@ set(FILES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
         interface/argument_parser.h)
 
 function(build_dir dir)
-#    message("${CMAKE_CURRENT_SOURCE_DIR}/${dir}/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/${dir}/*.h")
     file(GLOB_RECURSE FILES_TEMP "${CMAKE_CURRENT_SOURCE_DIR}/${dir}/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/${dir}/*.h")
     set(FILES ${FILES} ${FILES_TEMP} PARENT_SCOPE)
 endfunction()
@@ -32,22 +34,28 @@ build_dir("interface")
 if (ENABLE_LLVM)
     find_package(LLVM CONFIG REQUIRED)
 
-    message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-    message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+    if (NOT LLVM_FOUND)
+        message(STATUS "LLVM NOT FOUND, DISABLING LLVM")
+    else()
+        message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+        message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-    message("LLVM STATUS:
-        Definitions: ${LLVM_DEFINITIONS}
-        Include Dirs: ${LLVM_INCLUDE_DIRS}
-        Libraries: ${LLVM_LIBRARIES}
-        Tools: ${LLVM_TOOLS_BINARY_DIR}"
-    )
+        add_compile_definitions(LLVM_ENABLE)
 
-    include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
-    add_definitions(${LLVM_DEFINITIONS})
+        message("LLVM STATUS:
+            Definitions: ${LLVM_DEFINITIONS}
+            Include Dirs: ${LLVM_INCLUDE_DIRS}
+            Libraries: ${LLVM_LIBRARIES}
+            Tools: ${LLVM_TOOLS_BINARY_DIR}"
+        )
 
-    llvm_map_components_to_libnames(core)
+        include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
+        add_definitions(${LLVM_DEFINITIONS})
 
-    build_dir("llvm")
+        llvm_map_components_to_libnames(core)
+
+        build_dir("llvm-gen")
+    endif()
 endif ()
 
 if (ENABLE_TESTING)
@@ -60,7 +68,6 @@ if (ENABLE_TESTING)
     endforeach ()
 endif ()
 
-message("FILES: ${FILES}")
 add_executable(llvm_frontend ${FILES})
 
 if (ENABLE_LLVM)

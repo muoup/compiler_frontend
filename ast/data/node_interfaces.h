@@ -7,23 +7,28 @@
 #include <optional>
 
 #ifdef LLVM_ENABLE
-#define CG_VIRTUAL virtual
-#define CG_CODEGEN() llvm::Value* generate_code(cg::scope_data &scope) const
-#define CG_OVERRIDE override
-#define CG_PURE = 0
+
+#include <llvm/IR/Value.h>
+#include <llvm/IR/BasicBlock.h>
+
+#define CG_BASE() generate_code(cg::scope_data &scope) const
+
+#define CG_PURE() virtual llvm::Value* CG_BASE() = 0
+
+#define CG_CUSTOMGEN(return_type) return_type CG_BASE() override
+#define CG_BASICGEN() CG_CUSTOMGEN(llvm::Value*)
+
 #else
-#define CG_VIRTUAL
-#define CG_CODEGEN()
-#define CG_OVERRIDE
-#define CG_PURE
+
+#define CG_BASE()
+#define CG_PURE()
+#define CG_CUSTOMGEN(return_type)
+#define CG_BASICGEN()
+
 #endif
 
 namespace cg {
     struct scope_data;
-}
-
-namespace llvm {
-    class Value;
 }
 
 namespace ast::nodes {
@@ -39,7 +44,7 @@ namespace ast::nodes {
     struct codegen_node {
         virtual ~codegen_node() = default;
         virtual void print(size_t depth) const = 0;
-        CG_VIRTUAL CG_CODEGEN() CG_PURE;
+        CG_PURE();
     };
 
     /**
@@ -54,8 +59,6 @@ namespace ast::nodes {
 
         ~expression() override = default;
         void print(size_t depth) const override = 0;
-
-        CG_CODEGEN() CG_PURE;
     };
 
     /**
@@ -71,7 +74,6 @@ namespace ast::nodes {
 
         virtual ~statement() = default;
         virtual void print(size_t depth) const override = 0;
-        CG_CODEGEN() CG_OVERRIDE CG_PURE;
     };
 
     /**
@@ -92,7 +94,8 @@ namespace ast::nodes {
 
         ~scope_block() = default;
         void print(size_t depth) const override;
-        CG_CODEGEN() CG_OVERRIDE;
+
+        CG_CUSTOMGEN(llvm::BasicBlock*);
     };
 
     /**
@@ -116,6 +119,7 @@ namespace ast::nodes {
 
         ~function() = default;
         void print(size_t depth) const override;
-        CG_CODEGEN() CG_OVERRIDE;
+
+        CG_BASICGEN();
     };
 }

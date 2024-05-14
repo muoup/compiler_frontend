@@ -12,10 +12,7 @@ bool get_arg(c_args& args, int& i, std::string_view& arg) {
     return true;
 }
 
-bool get_filename(c_args& args, int& i, std::string_view& arg) {
-    if (args.argc == 1)
-        return false;
-
+bool get_filename(c_args& args, std::string_view& arg) {
     if (args.argv[args.argc - 1][0] == '-')
         return false;
 
@@ -57,8 +54,10 @@ arg_env in::parse_args(int argc, char **argv) {
         }
     }
 
-    if (!get_filename(args, i, arg)) {
+    if (!get_filename(args, arg)) {
         std::cerr << "No input file provided\n";
         std::exit(1);
     }
+
+    return env;
 }
