@@ -47,6 +47,8 @@ One final example of the language's capabilities is the ability for structs and 
 utilizing a struct to store two integers and an array to store 5 integers, which will output the numbers 1, 2, 3, 4, and 5:
 
 ```
+libc fn printf(char* str, ...) -> i32;
+
 struct example_struct {
     i32 a, i32 b
 }
