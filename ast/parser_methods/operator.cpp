@@ -10,8 +10,6 @@ namespace ast::pm {
     };
 
     std::unique_ptr<nodes::expression> load_if_necessary(std::unique_ptr<nodes::expression> node) {
-        auto type = node->get_type();
-
         if (node->get_type().is_var_ref) {
             return std::make_unique<nodes::load>(std::move(node));
         }
@@ -86,25 +84,13 @@ namespace ast::pm {
             } else {
                 throw std::runtime_error("Cannot assign array initializer to primitive/pointer non-array type");
             }
-        } else {
+        } else if (l_type != r_type) {
             right = std::make_unique<nodes::cast>(
                 std::move(right),
                 nodes::variable_type {
                     l_type
                 }
             );
-        }
-
-        if (l_type == r_type) {
-            if (!additional_operator.has_value() || l_type.is_intrinsic() && r_type.is_intrinsic()) {
-                return nodes::assignment {
-                        std::move(left),
-                        std::move(right),
-                        additional_operator
-                };
-            }
-
-            throw std::runtime_error("Non-intrinsic types cannot be casted (yet)!");
         }
 
         return nodes::assignment {

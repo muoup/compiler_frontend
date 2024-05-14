@@ -8,9 +8,11 @@
 
 using namespace ast;
 
-std::vector<std::unordered_map<std::string_view, ast::nodes::variable_type>> ast::scope_stack {};
-std::unordered_map<std::string_view, std::vector<ast::nodes::type_instance>> ast::struct_types {};
-std::unordered_map<std::string_view, ast::nodes::variable_type> ast::function_types {};
+std::vector<std::unordered_map<std::string_view, ast::nodes::variable_type>> ast::scope_stack;
+std::unordered_map<std::string_view, std::vector<ast::nodes::type_instance>> ast::struct_types;
+std::unordered_map<std::string_view, ast::nodes::function_prototype*> ast::function_prototypes;
+
+ast::nodes::function_prototype* ast::current_function = nullptr;
 
 std::optional<ast::nodes::variable_type> ast::get_var_type(std::string_view var_name) {
     for (auto it = scope_stack.rbegin(); it != scope_stack.rend(); ++it) {

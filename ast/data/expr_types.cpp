@@ -4,8 +4,8 @@
 using namespace ast::nodes;
 
 variable_type method_call::get_type() const {
-    return ast::pm::find_element(ast::function_types, method_name)
-        .value_or(variable_type::void_type());
+    return (*ast::pm::find_element(ast::function_prototypes, method_name))
+        ->return_type;
 }
 
 variable_type initialization::get_type() const {
@@ -68,17 +68,19 @@ variable_type assignment::get_type() const {
 variable_type literal::get_type() const {
     switch (value.index()) {
         case UINT:
-            return { intrinsic_types::u64 };
+            return {intrinsic_type::u64 };
         case INT:
-            return { intrinsic_types::i64 };
+            return {intrinsic_type::i64 };
         case FLOAT:
-            return { intrinsic_types::f64 };
+            return {intrinsic_type::f64 };
         case CHAR:
-            return { intrinsic_types::char_ };
+            return {intrinsic_type::char_ };
         case STRING:
             return variable_type {
-                intrinsic_types::char_,
-                1
+                    intrinsic_type::char_,
+                    true,
+                    false,
+                    1
             };
         default:
             std::unreachable();
@@ -99,5 +101,5 @@ variable_type load::get_type() const {
 }
 
 variable_type initializer_list::get_type() const {
-    return variable_type { intrinsic_types::init_list };
+    return variable_type {intrinsic_type::init_list };
 }

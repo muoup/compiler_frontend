@@ -60,23 +60,23 @@ const std::unordered_map<std::string_view, un_op_type> pm::unop_type_map {
     {"~", un_op_type::bit_not   }
 };
 
-const std::unordered_map<std::string_view, intrinsic_types> pm::intrin_map {
-    { "i8",   intrinsic_types::i8    },
-    { "i16",  intrinsic_types::i16   },
-    { "i32",  intrinsic_types::i32   },
-    { "i64",  intrinsic_types::i64   },
+const std::unordered_map<std::string_view, intrinsic_type> pm::intrin_map {
+    { "i8",   intrinsic_type::i8    },
+    { "i16",  intrinsic_type::i16   },
+    { "i32",  intrinsic_type::i32   },
+    { "i64",  intrinsic_type::i64   },
 
-    { "u8",   intrinsic_types::u8    },
-    { "u16",  intrinsic_types::u16   },
-    { "u32",  intrinsic_types::u32   },
-    { "u64",  intrinsic_types::u64   },
+    { "u8",   intrinsic_type::u8    },
+    { "u16",  intrinsic_type::u16   },
+    { "u32",  intrinsic_type::u32   },
+    { "u64",  intrinsic_type::u64   },
 
-    { "f32",  intrinsic_types::f32   },
-    { "f64",  intrinsic_types::f64   },
+    { "f32",  intrinsic_type::f32   },
+    { "f64",  intrinsic_type::f64   },
 
-    { "char", intrinsic_types::char_ },
-    { "bool", intrinsic_types::bool_ },
-    { "void", intrinsic_types::void_ }
+    { "char", intrinsic_type::char_ },
+    { "bool", intrinsic_type::bool_ },
+    { "void", intrinsic_type::void_ }
 };
 
 const std::unordered_map<std::string_view, assn_type> pm::assign_type_map {

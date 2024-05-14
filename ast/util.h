@@ -9,6 +9,7 @@
 
 #include "util.h"
 #include "data/abstract_data.h"
+#include "data/ast_nodes.h"
 
 namespace lex {
     struct lex_token;
@@ -18,7 +19,9 @@ namespace lex {
 namespace ast {
     extern std::vector<std::unordered_map<std::string_view, ast::nodes::variable_type>> scope_stack;
     extern std::unordered_map<std::string_view, std::vector<ast::nodes::type_instance>> struct_types;
-    extern std::unordered_map<std::string_view, ast::nodes::variable_type> function_types;
+    extern std::unordered_map<std::string_view, ast::nodes::function_prototype*> function_prototypes;
+
+    extern ast::nodes::function_prototype* current_function;
 
     using lex_cptr = std::vector<lex::lex_token>::const_iterator;
 
@@ -106,8 +109,6 @@ namespace ast {
     template <typename T, typename lex_cptr>
     std::vector<T> parse_split(lex_cptr& ptr, const lex_cptr end, const std::string_view split_val, const parse_fn<T> fn) {
         std::vector<T> split;
-
-        // ++ptr;
 
         while (ptr < end) {
             split.emplace_back(

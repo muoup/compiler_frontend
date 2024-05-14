@@ -103,9 +103,40 @@ llvm::Value* literal::generate_code(cg::scope_data &scope) const {
 
 llvm::Value* cast::generate_code(cg::scope_data &scope) const {
     auto *expr_val = expr->generate_code(scope);
-    auto *llvm_cast_type = get_llvm_type(this->cast_type, scope);
+    auto *llvm_cast_type = get_llvm_type(cast_type, scope);
 
-    return attempt_cast(expr_val, llvm_cast_type, scope);
+    auto expr_type = expr->get_type();
+
+    if (expr_type == cast_type)
+        return expr_val;
+
+    if (expr_type.is_pointer() && cast_type.is_pointer())
+        return scope.builder.CreatePointerCast(expr_val, llvm_cast_type);
+
+    if (!expr_type.is_intrinsic() || !cast_type.is_intrinsic())
+        throw std::runtime_error("Cannot cast non-intrinsic types.");
+
+    if (expr_type.is_int() && cast_type.is_int())
+        return scope.builder.CreateIntCast(expr_val, llvm_cast_type, cast_type.is_signed());
+
+    if (!expr_type.is_int() && !cast_type.is_int())
+        return scope.builder.CreateFPCast(expr_val, llvm_cast_type);
+
+    if (expr_type.is_int() && cast_type.is_fp()) {
+        if (expr_type.is_signed())
+            return scope.builder.CreateSIToFP(expr_val, llvm_cast_type);
+        else
+            return scope.builder.CreateUIToFP(expr_val, llvm_cast_type);
+    }
+
+    if (expr_type.is_fp() && cast_type.is_int()) {
+        if (cast_type.is_signed())
+            return scope.builder.CreateFPToSI(expr_val, llvm_cast_type);
+        else
+            return scope.builder.CreateFPToUI(expr_val, llvm_cast_type);
+    }
+
+    throw std::runtime_error("Invalid cast.");
 }
 
 llvm::Value* load::generate_code(cg::scope_data &scope) const {
@@ -168,30 +199,20 @@ llvm::Value* initialization::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* method_call::generate_code(cg::scope_data &scope) const {
-    llvm::Function* func = method_name.starts_with(libc_prefix) ?
-                           get_libc_fn(method_name, scope) :
-                           scope.module->getFunction(method_name);
+    llvm::Function* func = scope.module->getFunction(method_name);
 
     if (!func)
         throw std::runtime_error("Function not found.");
 
     std::vector<llvm::Value*> args;
 
-    for (auto i = 0; i < arguments.size(); ++i) {
-        auto param_val = arguments[i]->generate_code(scope);
-
-        if (i < func->arg_size())
-            param_val = attempt_cast(param_val, func->getArg(i)->getType(), scope);
-        else if (i >= func->arg_size() && !func->isVarArg())
-            throw std::runtime_error("Argument count mismatch.");
-        else
-            param_val = varargs_cast(param_val, scope);
-
-        args.emplace_back(param_val);
-    }
+    for (auto &arg : arguments)
+        args.emplace_back(arg->generate_code(scope));
 
     if (arguments.size() != func->arg_size() && !func->isVarArg())
         throw std::runtime_error("Argument count mismatch.");
+
+    auto call_param = this->arguments[0]->get_type();
 
     return scope.builder.CreateCall(func, args);
 }
@@ -204,9 +225,6 @@ llvm::Value* return_op::generate_code(cg::scope_data &scope) const {
     if (val) {
         auto ret_val = val->generate_code(scope);
         auto ret_type = scope.current_function->getReturnType();
-
-        if (ret_val->getType() != ret_type)
-            ret_val = attempt_cast(ret_val, ret_type, scope);
 
         return scope.builder.CreateRet(ret_val);
     }
@@ -326,6 +344,7 @@ llvm::Value *for_loop::generate_code(cg::scope_data &scope) const {
     auto pre_ins_pt = scope.builder.GetInsertBlock();
 
     auto *loop_body = body.generate_code(scope);
+    loop_body->setName("loop_body");
     auto *loop_iter = llvm::BasicBlock::Create(scope.context, "loop_iter", scope.current_function);
     auto *loop_cond = llvm::BasicBlock::Create(scope.context, "loop_cond", scope.current_function);
     auto *loop_merge = llvm::BasicBlock::Create(scope.context, "loop_merge", scope.current_function);
@@ -361,30 +380,30 @@ llvm::BasicBlock* scope_block::generate_code(cg::scope_data &scope) const {
     return in_scope_block.entry;
 }
 
-llvm::Value* function::generate_code(cg::scope_data &scope) const {
+llvm::Function* function_prototype::generate_code(cg::scope_data &scope) const {
     llvm::Type *type = get_llvm_type(this->return_type, scope);
 
-    std::vector<llvm::Type*> params;
+    std::vector<llvm::Type*> llvm_parameters;
 
-    params.reserve(param_types.size());
-    for (const auto &param : param_types)
-        params.emplace_back(get_llvm_type(param.type, scope));
+    llvm_parameters.reserve(params.data.size());
+    for (const auto &param : params.data)
+        llvm_parameters.emplace_back(get_llvm_type(param.type, scope));
 
-    llvm::FunctionType *func_type = llvm::FunctionType::get(type, llvm::ArrayRef<llvm::Type*> { params }, false);
-    llvm::Function *func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, fn_name, *scope.module);
+    llvm::FunctionType *func_type = llvm::FunctionType::get(type, llvm_parameters, params.is_var_args);
+    llvm::Value *func_val = scope.module->getOrInsertFunction(fn_name, func_type).getCallee();
+    llvm::Function *func = llvm::cast<llvm::Function>(func_val);
+
+    for (auto i = 0; i < params.data.size(); ++i)
+        func->args().begin()[i].setName(params.data[i].var_name);
+
+    return func;
+}
+
+llvm::Value* function::generate_code(cg::scope_data &scope) const {
+    auto *func = prototype->generate_code(scope);
 
     scope_data param_scope = gen_inner_scope(scope);
     param_scope.current_function = func;
-
-    for (auto i = 0; i < param_types.size(); ++i) {
-        auto arg = func->args().begin() + i;
-        arg->setName(param_types[i].var_name);
-
-//        body_scope.tables.back()->emplace(
-//            param_types[i].var_name,
-//            scope_variable { arg, true }
-//        );
-    }
 
     body.generate_code(param_scope);
     return func;
@@ -444,9 +463,15 @@ llvm::Value* bin_op::generate_code(cg::scope_data &scope) const {
 
 llvm::Value* assignment::generate_code(cg::scope_data &scope) const {
     auto *l_val = lhs->generate_code(scope);
-    auto *r_val = op ?
-                    cg::generate_bin_op(lhs, rhs, *op, scope) :
-                    rhs->generate_code(scope);
+    auto *r_val = rhs->generate_code(scope);
+
+    if (op) {
+        r_val = scope.builder.CreateBinOp(
+                get_llvm_binop(*op, r_val->getType()->isFloatingPointTy()),
+                scope.builder.CreateLoad(r_val->getType(), l_val),
+                r_val
+        );
+    }
 
     return scope.builder.CreateStore(r_val, l_val);
 }

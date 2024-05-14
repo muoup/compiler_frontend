@@ -5,7 +5,6 @@
 #include <llvm/IR/Type.h>
 
 #include "basic_codegen.h"
-#include "../ast/data/data_maps.h"
 #include "types.h"
 
 using namespace cg;
@@ -53,26 +52,38 @@ llvm::Value *generate_comparison(const pseudo_bin_op &ref, cg::scope_data &scope
 
     if (ref.left->get_type().is_fp()) {
         return scope.builder.CreateFCmp(
-                llvm::CmpInst::Predicate::FCMP_OEQ,
+                *pm::find_element(pm::f_cmp_map, ref.type),
                 lhs, rhs
         );
     } else {
+        auto i_cmp = *pm::find_element(pm::i_cmp_map, ref.type);
+
+        if (ref.type == nodes::bin_op_type::eq || ref.type == nodes::bin_op_type::neq)
+            return scope.builder.CreateICmp(i_cmp, lhs, rhs);
+
+        if (ref.left->get_type().is_signed())
+            i_cmp = static_cast<llvm::CmpInst::Predicate>(i_cmp + 4);
+
         return scope.builder.CreateICmp(
-                llvm::CmpInst::Predicate::ICMP_EQ,
+                i_cmp,
                 lhs, rhs
         );
     }
+}
+
+llvm::Instruction::BinaryOps cg::get_llvm_binop(const nodes::bin_op_type type, const bool is_fp) {
+    auto mapped_type = pm::basic_binop_map.at(type);
+
+    return static_cast<llvm::Instruction::BinaryOps>(mapped_type + is_fp);
 }
 
 llvm::Value* generate_basic_op(const pseudo_bin_op &ref, cg::scope_data &scope) {
     auto *lhs = ref.left->generate_code(scope);
     auto *rhs = ref.right->generate_code(scope);
 
-    auto mapped_type = pm::basic_binop_map.at(ref.type);
-
-    const auto bin_op_type = static_cast<llvm::Instruction::BinaryOps>(mapped_type + rhs->getType()->isFloatingPointTy());
-
-    return scope.builder.CreateBinOp(bin_op_type, lhs, rhs);
+    return scope.builder.CreateBinOp(
+            get_llvm_binop(ref.type, lhs->getType()->isFloatingPointTy()),
+            lhs, rhs);
 }
 
 llvm::Value* cg::generate_accessor(const std::unique_ptr<ast::nodes::expression> &left, const std::unique_ptr<ast::nodes::expression> &right, cg::scope_data &scope) {

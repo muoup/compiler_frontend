@@ -45,9 +45,7 @@ namespace ast::nodes {
 
     struct var_ref : expression {
         NODENAME("VAR_REF");
-        CHILDREN(type);
-
-        DETAILS(var_name);
+        DETAILS(var_name, type);
 
         std::string_view var_name;
         std::optional<nodes::variable_type> type = std::nullopt;
@@ -139,17 +137,14 @@ namespace ast::nodes {
     struct assignment : expression {
         NODENAME("ASSIGNMENT");
         CHILDREN(lhs, rhs);
-        DETAILS(op ? std::make_optional(
-                ast::pm::find_key(ast::pm::binop_type_map, op.value())) : std::nullopt);
+        DETAILS(op ? ast::pm::find_key(ast::pm::binop_type_map, *op) : std::nullopt);
 
         std::unique_ptr<expression> lhs, rhs;
         std::optional<bin_op_type> op = std::nullopt;
 
         assignment(assignment&&) noexcept = default;
-        assignment(std::unique_ptr<expression> lhs, std::unique_ptr<expression> rhs)
-                : lhs(std::move(lhs)), rhs(std::move(rhs)) {}
-        assignment(std::unique_ptr<expression> lhs, std::unique_ptr<expression> rhs, std::optional<bin_op_type> op)
-                : lhs(std::move(lhs)), rhs(std::move(rhs)), op(op) {}
+        assignment(std::unique_ptr<expression> lhs, std::unique_ptr<expression> rhs, std::optional<bin_op_type> additional_operator = std::nullopt)
+                : lhs(std::move(lhs)), rhs(std::move(rhs)), op(additional_operator) {}
 
         CODEGEN() override;
         ~assignment() = default;
@@ -379,6 +374,24 @@ namespace ast::nodes {
 
     // -- Program Level Nodes -------
 
+    struct function_prototype : program_level_stmt {
+        NODENAME("FUNCTION_PROTOTYPE");
+        CHILDREN(params.data);
+        DETAILS(fn_name, return_type, params.is_var_args);
+
+        variable_type return_type;
+        std::string_view fn_name;
+        method_params params;
+
+        function_prototype(function_prototype&&) noexcept = default;
+        function_prototype(variable_type return_type, std::string_view method_name, method_params params)
+                : return_type(return_type), fn_name(method_name), params(params) {}
+
+        ~function_prototype() = default;
+
+        CUSTOM_CODEGEN(llvm::Function) override;
+    };
+
     /**
      *  Function: Non-Abstract Data Type
      *  -------------------------------
@@ -390,16 +403,14 @@ namespace ast::nodes {
      */
     struct function : program_level_stmt {
         NODENAME("FUNCTION");
-        CHILDREN(body);
+        CHILDREN(prototype, body);
 
-        variable_type return_type;
-        std::string_view fn_name;
-        std::vector<type_instance> param_types;
+        std::unique_ptr<ast::nodes::function_prototype> prototype;
         scope_block body;
 
         function(function&&) noexcept = default;
-        function(variable_type return_type, std::string_view method_name, std::vector<type_instance> param_types, scope_block body)
-                : return_type(return_type), fn_name(method_name), param_types(std::move(param_types)), body(std::move(body)) {}
+        function(std::unique_ptr<ast::nodes::function_prototype> prototype, scope_block body)
+                : prototype(std::move(prototype)), body(std::move(body)) {}
 
         ~function() = default;
         CODEGEN() override;

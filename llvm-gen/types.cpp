@@ -7,25 +7,25 @@
 
 using namespace cg;
 
-const std::unordered_map<ast::nodes::intrinsic_types, type_getter> type_generators {
-    { ast::nodes::intrinsic_types::i8, AS_TYPE_GEN(llvm::Type::getInt8Ty) },
-    { ast::nodes::intrinsic_types::i16, AS_TYPE_GEN(llvm::Type::getInt16Ty) },
-    { ast::nodes::intrinsic_types::i32, AS_TYPE_GEN(llvm::Type::getInt32Ty) },
-    { ast::nodes::intrinsic_types::i64, AS_TYPE_GEN(llvm::Type::getInt64Ty) },
+const std::unordered_map<ast::nodes::intrinsic_type, type_getter> type_generators {
+    { ast::nodes::intrinsic_type::i8,    AS_TYPE_GEN(llvm::Type::getInt8Ty) },
+    { ast::nodes::intrinsic_type::i16,   AS_TYPE_GEN(llvm::Type::getInt16Ty) },
+    { ast::nodes::intrinsic_type::i32,   AS_TYPE_GEN(llvm::Type::getInt32Ty) },
+    { ast::nodes::intrinsic_type::i64,   AS_TYPE_GEN(llvm::Type::getInt64Ty) },
 
-    { ast::nodes::intrinsic_types::f32, AS_TYPE_GEN(llvm::Type::getFloatTy) },
-    { ast::nodes::intrinsic_types::f64, AS_TYPE_GEN(llvm::Type::getDoubleTy) },
+    { ast::nodes::intrinsic_type::f32,   AS_TYPE_GEN(llvm::Type::getFloatTy) },
+    { ast::nodes::intrinsic_type::f64,   AS_TYPE_GEN(llvm::Type::getDoubleTy) },
 
-    { ast::nodes::intrinsic_types::char_, AS_TYPE_GEN(llvm::Type::getInt8Ty) },
+    { ast::nodes::intrinsic_type::char_, AS_TYPE_GEN(llvm::Type::getInt8Ty) },
 
-    { ast::nodes::intrinsic_types::bool_, AS_TYPE_GEN(llvm::Type::getInt8Ty) },
-    { ast::nodes::intrinsic_types::void_, AS_TYPE_GEN(llvm::Type::getVoidTy) }
+    { ast::nodes::intrinsic_type::bool_, AS_TYPE_GEN(llvm::Type::getInt8Ty) },
+    { ast::nodes::intrinsic_type::void_, AS_TYPE_GEN(llvm::Type::getVoidTy) }
 };
 
 const struct_definition* cg::get_struct_ref(const ast::nodes::variable_type &val_type, scope_data &scope) {
     const auto& type = val_type.type;
 
-    if (std::holds_alternative<ast::nodes::intrinsic_types>(type)) {
+    if (std::holds_alternative<ast::nodes::intrinsic_type>(type)) {
         return nullptr;
     }
 
@@ -36,12 +36,12 @@ const struct_definition* cg::get_struct_ref(const ast::nodes::variable_type &val
 
 llvm::Type* cg::get_llvm_type(const ast::nodes::variable_type &val_type, scope_data &scope) {
     const auto& type = val_type.type;
-    llvm::Type* derived_type = std::holds_alternative<ast::nodes::intrinsic_types>(type) ?
-            type_generators.at(std::get<ast::nodes::intrinsic_types>(type))(scope.context) :
+    llvm::Type* derived_type = std::holds_alternative<ast::nodes::intrinsic_type>(type) ?
+            type_generators.at(std::get<ast::nodes::intrinsic_type>(type))(scope.context) :
             scope.get_struct(std::get<std::string_view>(type)).struct_type;
 
-    if (val_type.pointer_depth == 0)
-        return derived_type;
+    for (size_t i = 0; i < val_type.pointer_depth; i++)
+        derived_type = llvm::PointerType::get(derived_type, 0);
 
-    return llvm::PointerType::get(derived_type, val_type.pointer_depth);
+    return derived_type;
 }

@@ -27,12 +27,14 @@ int main() {
 //    )";
 
     const auto *code = R"(
-        struct test {
-            i32 a; i32 b;
-        }
+        libc fn printf(char*, ...) -> i32;
 
-        fn main() -> i8 {
+        fn main() -> i32 {
             i32[] arr = { 1, 2, 3, 4, 5 };
+
+            for (i32 i = 0; i < 5; i += 1) {
+                printf("%d ", arr[i]);
+            }
 
             return arr[2];
         }

@@ -18,6 +18,8 @@ namespace cg {
         llvm::Value *lhs, *rhs;
     };
 
+    llvm::Instruction::BinaryOps get_llvm_binop(ast::nodes::bin_op_type type, bool is_fp);
+
     llvm::Value* varargs_cast(llvm::Value *val, const scope_data& scope);
 
     balance_result balance_sides(llvm::Value *lhs, llvm::Value *rhs, const scope_data& data);

@@ -37,6 +37,8 @@ namespace ast::pm {
 
     nodes::struct_initializer parse_struct_initializer(ast::lex_cptr &ptr, const ast::lex_cptr end);
 
+    nodes::initialization parse_initialization(lex_cptr &ptr, const lex_cptr end);
+
     std::unique_ptr<nodes::expression> parse_expression(lex_cptr &ptr, const lex_cptr end);
 
     std::unique_ptr<nodes::expression> parse_expr_tree(lex_cptr &ptr, const lex_cptr end);

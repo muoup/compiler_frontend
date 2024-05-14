@@ -26,9 +26,19 @@ std::unique_ptr<nodes::statement> pm::parse_statement(lex_cptr &ptr, lex_cptr en
         if (++ptr == end)
             return std::make_unique<nodes::return_op>();
 
-        return std::make_unique<nodes::return_op>(
-            load_if_necessary(parse_expr_tree(ptr, end))
-        );
+        auto ret_val = load_if_necessary(parse_expr_tree(ptr, end));
+
+        if (ret_val->get_type() != current_function->return_type) {
+            // TODO: Attempt cast method, to prevent bad casting
+            ret_val = std::make_unique<nodes::cast>(
+                std::move(ret_val),
+                nodes::variable_type {
+                    current_function->return_type
+                }
+            );
+        }
+
+        return std::make_unique<nodes::return_op>(std::move(ret_val));
     }
 
     return std::make_unique<nodes::expression_root>(
@@ -76,7 +86,7 @@ nodes::for_loop pm::parse_for_loop(lex_cptr &ptr, lex_cptr end) {
     assert_token_val(ptr, "(");
 
     return nodes::for_loop {
-            parse_until(ptr, end, ";", parse_expr_tree),
+        parse_until(ptr, end, ";", parse_expr_tree),
         parse_until(ptr, end, ";", parse_expr_tree),
         parse_until(ptr, end, ")", parse_expr_tree),
         parse_body(ptr, end)

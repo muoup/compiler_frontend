@@ -8,7 +8,8 @@
 #include <llvm/IR/BasicBlock.h>
 #include <iostream>
 
-#define CODEGEN() llvm::Value* generate_code(cg::scope_data &scope) const
+#define CUSTOM_CODEGEN(custom_return) custom_return* generate_code(cg::scope_data &scope) const
+#define CODEGEN() CUSTOM_CODEGEN(llvm::Value)
 #define NODENAME(str) std::string_view node_name() const override { return str; }
 #define ABSTRACT_NODENAME(str) std::string_view node_name() const override { return str "(SHOULD NOT PRINT)"; }
 #define CHILDREN(...) \

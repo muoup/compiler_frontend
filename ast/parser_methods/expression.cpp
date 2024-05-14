@@ -31,7 +31,7 @@ std::unique_ptr<nodes::expression> pm::parse_expression(lex_cptr &ptr, const lex
         return std::make_unique<nodes::match>(parse_match(ptr, end));
 
     if (is_variable_identifier(ptr))
-        return std::make_unique<nodes::initialization>(parse_type_instance(ptr, end));
+        return std::make_unique<nodes::initialization>(parse_initialization(ptr, end));
 
     if (try_peek_type(ptr, end, lex::lex_type::IDENTIFIER) && try_peek_val(ptr, end, "(", 1))
         return std::make_unique<nodes::method_call>(parse_method_call(ptr, end));
@@ -171,29 +171,60 @@ std::optional<nodes::literal> pm::parse_literal(lex_cptr &ptr, const lex_cptr en
 }
 
 nodes::type_instance pm::parse_type_instance(lex_cptr &ptr, const lex_cptr end) {
-    auto val_type = pm::parse_var_type(ptr, end);
-    auto type = assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span;
+    if (test_token_val(ptr, "...")) {
+        return nodes::type_instance {
+            nodes::variable_type {
+                nodes::intrinsic_type::infer_type,
+            },
+            "..."
+        };
+    }
 
-    scope_stack.back().emplace(type, val_type);
+    auto val_type = pm::parse_var_type(ptr, end);
+    auto type = test_token_type(ptr, lex::lex_type::IDENTIFIER);
 
     return nodes::type_instance {
             val_type,
-            type
+            type ? (*type)->span : ""
     };
 }
 
 nodes::method_call pm::parse_method_call(lex_cptr &ptr, const lex_cptr end) {
-    const auto method_name = consume(ptr, end)->span;
-    const auto param_end = consume(ptr, end)->closer.value();
-
-    nodes::method_call method_call {
-            method_name,
-            parse_call_params(ptr, param_end)
+    auto call = nodes::method_call {
+            consume(ptr, end)->span,
+            parse_between(ptr, "(", parse_expression_list)
     };
 
-    ptr = param_end + 1;
+    auto fn = *find_element(function_prototypes, call.method_name);
 
-    return method_call;
+    for (auto i = 0; i < call.arguments.size(); i++) {
+        auto& arg = call.arguments[i];
+        arg = load_if_necessary(std::move(arg));
+
+        nodes::variable_type expected_type = arg->get_type();
+
+        if (i < fn->params.data.size()) {
+            expected_type = fn->params.data[i].type;
+        } else if (fn->params.is_var_args) {
+            if (!expected_type.is_pointer()) {
+                expected_type = nodes::variable_type {
+                    nodes::intrinsic_type::i32,
+                };
+            }
+        }
+        else {
+            throw std::runtime_error("Too many arguments for function");
+        }
+
+        if (arg->get_type() != expected_type) {
+            arg = std::make_unique<nodes::cast>(
+                std::move(arg),
+                expected_type
+            );
+        }
+    }
+
+    return call;
 }
 
 nodes::bin_op pm::parse_array_access(lex_cptr &ptr, const lex_cptr end) {
@@ -257,7 +288,7 @@ nodes::match pm::parse_match(ast::lex_cptr &ptr, const ast::lex_cptr end) {
 
 nodes::initializer_list pm::parse_initializer_list(ast::lex_cptr &ptr, const ast::lex_cptr end) {
     return nodes::initializer_list {
-        parse_between(ptr, parse_call_params)
+            parse_between(ptr, parse_expression_list)
     };
 }
 
@@ -270,5 +301,15 @@ nodes::struct_initializer pm::parse_struct_initializer(ast::lex_cptr &ptr, const
     return nodes::struct_initializer {
         struct_type,
         parse_initializer_list(ptr, end).values
+    };
+}
+
+nodes::initialization pm::parse_initialization(lex_cptr &ptr, const lex_cptr end) {
+    auto type_inst = parse_type_instance(ptr, end);
+
+    scope_stack.back().emplace(type_inst.var_name, type_inst.type);
+
+    return nodes::initialization {
+        std::move(type_inst)
     };
 }
