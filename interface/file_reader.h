@@ -24,7 +24,7 @@ namespace in {
         file_pipeline& gen_lex();
         file_pipeline& gen_ast();
 
-#ifdef ENABLE_LLVM
+#ifdef LLVM_ENABLE
         file_pipeline& gen_llvm();
 #endif
     };

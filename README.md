@@ -10,28 +10,55 @@ useful features like pattern matching, destructuring, rich enums, and in-built t
 1. [Example Code](#example-code)
 
 ## Example Code
+
+Until a library system is implemented, all libc references must be declared by hand in the source code, however
+the syntax is very similar to C, with a few minor differences. The following example demonstrates the syntax
+for a basic "Hello, World!" program:
+
 ```
-fn main() {
-    i32 x = 5;
-    
-    __libc_printf("Hello, World!\n");
-    __libc_printf("x = %d\n", x); 
+libc fn printf(char* str, ...) -> i32;
+
+i32 main() {
+    printf("Hello, World!\n");
 }
 ```
 
-For now until function prototypes / external definitions are implemented, the prefix
-'__libc_' is used to denote external functions from the C standard library.
+Most standard forms of control flow are supported, including if-else statements, while/do while loops, and for loops,
+as seen in the following example, which outputs the numbers 0 through 9:
+
+Note that as the compiler works with non-owning strings, string literals cannot contain escape characters, this will
+be fixed in the near future.
 
 ```
-fn test() {
+libc fn printf(char* str, ...) -> i32;
+
+void test() {
     for (i32 i = 0; i < 10; i++) {
-        __libc_printf("i = %d\n", i);
+        printf("%d ", i);
     }
 }
 
-fn main() {
+i32 main() {
     test();
 }
 ```
 
-Most standard forms of control flow are supported, including if-else statements, while/do while loops, and for loops.
+One final example of the language's capabilities is the ability for structs and arrays, as seen in the following example,
+utilizing a struct to store two integers and an array to store 5 integers, which will output the numbers 1, 2, 3, 4, and 5:
+
+```
+libc fn printf(char* str, ...) -> i32;
+
+struct example_struct {
+    i32 a, i32 b
+}
+
+i32 main() {
+    example_struct s = {1, 2};
+    i32[] arr = {1, s.b, 3, 4, 5};
+    
+    for (i32 i = 0; i < 5; i++) {
+        printf("%d ", arr[i]);
+    }
+}
+```

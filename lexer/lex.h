@@ -35,6 +35,14 @@ namespace lex {
 
         "mut", "extern", "volatile",
 
+        "fn",
+
+        "struct",
+
+        "match", "case", "default",
+
+        "as",
+
         "return"
     };
 
@@ -51,10 +59,14 @@ namespace lex {
         "!", "&", "|", "^", "~", "<", ">", "?", ":",
         "<<", ">>",
 
-        ",", ".", "#", ";",
+        ",", "#", ";",
+
+        ".", "->",
 
         "==", "!=", "<=", ">=", "&&", "||",
-        "++", "--", "**"
+        "++", "--", "**",
+
+        "..."
     };
 
     inline std::unordered_set<std::string_view> ASSN_SYMBOL = {

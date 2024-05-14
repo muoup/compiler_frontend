@@ -1,4 +1,4 @@
-#include "util_methods.h"
+#include "util.h"
 
 #include <algorithm>
 #include <format>
@@ -7,6 +7,22 @@
 #include "../lexer/lex.h"
 
 using namespace ast;
+
+std::vector<std::unordered_map<std::string_view, ast::nodes::variable_type>> ast::scope_stack;
+std::unordered_map<std::string_view, std::vector<ast::nodes::type_instance>> ast::struct_types;
+std::unordered_map<std::string_view, ast::nodes::function_prototype*> ast::function_prototypes;
+
+ast::nodes::function_prototype* ast::current_function = nullptr;
+
+std::optional<ast::nodes::variable_type> ast::get_var_type(std::string_view var_name) {
+    for (auto it = scope_stack.rbegin(); it != scope_stack.rend(); ++it) {
+        auto find = it->find(var_name);
+        if (find != it->end())
+            return find->second;
+    }
+
+    return std::nullopt;
+}
 
 void ast::throw_unexpected(const lex::lex_token& token, const std::string_view expected) {
     throw std::runtime_error(std::format("Unexpected token: {}, {}", token.span, expected));
@@ -49,6 +65,28 @@ lex_cptr ast::assert_token(lex_cptr& ptr, const parse_pred pred) {
         throw_unexpected(*ptr, "Condition not met!");
 
     return ptr++;
+}
+
+lex_cptr ast::consume(lex_cptr &ptr, const lex_cptr end) {
+    if (ptr == end)
+        throw std::runtime_error("Unexpected end of input!");
+
+    return ptr++;
+}
+
+lex_cptr ast::peek(const lex_cptr ptr, const lex_cptr end, size_t offset) {
+    if (ptr + offset >= end)
+        throw std::runtime_error("Unexpected end of input!");
+
+    return ptr + offset;
+}
+
+bool ast::try_peek_type(const lex_cptr ptr, const lex_cptr end, const lex::lex_type type, const size_t offset) {
+    return (ptr + offset) <= end && (ptr + offset)->type == type;
+}
+
+bool ast::try_peek_val(const lex_cptr ptr, const lex_cptr end, const std::string_view val, const size_t offset) {
+    return (ptr + offset) <= end && (ptr + offset)->span == val;
 }
 
 std::optional<lex_cptr> ast::test_token_val(lex_cptr &ptr, const std::string_view val) {
@@ -102,6 +140,6 @@ std::optional<lex_cptr> ast::find_by_tok_type(const lex_cptr start, const lex_cp
 }
 
 bool ast::is_variable_identifier(const lex_cptr token) {
-    return token->type == lex::lex_type::IDENTIFIER
-        || token->type == lex::lex_type::PRIMITIVE;
+    return token->type == lex::lex_type::PRIMITIVE
+        || struct_types.contains(token->span);
 }

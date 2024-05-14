@@ -14,18 +14,14 @@ option(ENABLE_LLVM "Build with LLVM support" ON)
 option(ENABLE_TESTING "Build with testing support" ON)
 
 set(CMAKE_CXX_STANDARD 23)
-set(FILES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
-        interface/file_reader.cpp
-        interface/file_reader.h
-        interface/argument_parser.cpp
-        interface/argument_parser.h)
+set(FILES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
 
 function(build_dir dir)
     file(GLOB_RECURSE FILES_TEMP "${CMAKE_CURRENT_SOURCE_DIR}/${dir}/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/${dir}/*.h")
     set(FILES ${FILES} ${FILES_TEMP} PARENT_SCOPE)
 endfunction()
 
-message("Building...")
+message(STATUS "Building...")
 
 build_dir("ast")
 build_dir("lexer")
@@ -36,13 +32,14 @@ if (ENABLE_LLVM)
 
     if (NOT LLVM_FOUND)
         message(STATUS "LLVM NOT FOUND, DISABLING LLVM")
+        set(ENABLE_LLVM OFF)
     else()
         message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
         message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
         add_compile_definitions(LLVM_ENABLE)
 
-        message("LLVM STATUS:
+        message(STATUS "LLVM STATUS:
             Definitions: ${LLVM_DEFINITIONS}
             Include Dirs: ${LLVM_INCLUDE_DIRS}
             Libraries: ${LLVM_LIBRARIES}
@@ -58,20 +55,11 @@ if (ENABLE_LLVM)
     endif()
 endif ()
 
-if (ENABLE_TESTING)
-    # Include the test scripts in the /test_code/ directory
-    file(GLOB_RECURSE TEMP_FILES "interface/test_code/*")
-
-    # Add temp files to build files
-    foreach(TEMP_FILE ${TEMP_FILES})
-        file(COPY ${TEMP_FILE} DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/test_code")
-    endforeach ()
-endif ()
-
 add_executable(llvm_frontend ${FILES})
 
 if (ENABLE_LLVM)
-    target_link_libraries(llvm_frontend PRIVATE ${LLVM_LIBRARIES})
+    target_link_libraries(llvm_frontend PRIVATE LLVMCore)
+    message(STATUS "LLVM ENABLED")
 endif ()
 
-message("BUILD END")
+message(STATUS "BUILD END")

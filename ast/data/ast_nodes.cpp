@@ -1,176 +1,49 @@
 #include "ast_nodes.h"
 #include "../parser_methods/operator.h"
+#include "data_maps.h"
+#include "../util.h"
 #include <iostream>
 
 using namespace ast::nodes;
 
-void print_depth(const size_t depth) {
-    for (size_t i = 0; i < depth; ++i)
-        std::cout << "  ";
-}
+// -- Specialized Constructors --
 
-void root::print(const size_t depth) const {
-    print_depth(depth);
+array_initializer::array_initializer(variable_type type, ast::nodes::initializer_list &&init_list)
+    : array_type(type), values(std::move(init_list.values)) {
 
-    std::cout << "Root\n";
-    for (const auto& var : global_vars)
-        var.print(depth + 1);
+    for (auto &val : values) {
+        const auto val_type = val->get_type();
 
-    for (const auto& func : functions)
-        func.print(depth + 1);
-}
+        if (val_type != array_type) {
+            if (!val_type.is_intrinsic() || !array_type.is_intrinsic())
+                throw std::runtime_error("Non-intrinsic types cannot be casted (yet)!");
 
-void scope_block::print(const size_t depth) const {
-    print_depth(depth);
-
-    std::cout << "Code block\n";
-    for (const auto& stmt : statements)
-        stmt->print(depth + 1);
-}
-
-void function::print(const size_t depth) const {
-    print_depth(depth);
-
-    std::cout << "Function " << fn_name << "\n";
-    for (const auto& param : param_types)
-        param.print(depth + 1);
-
-    body.print(depth + 1);
-}
-
-void return_op::print(const size_t depth) const {
-    print_depth(depth);
-
-    std::cout << "Return\n";
-
-    if (val)
-        val->print(depth + 1);
-}
-
-void var_ref::print(const size_t depth) const {
-    print_depth(depth);
-
-    std::cout << "Variable Reference: " << name << "\n";
-}
-
-void type_instance::print(const size_t depth) const {
-    print_depth(depth);
-
-    std::cout << "Initialization: " << var_name << "\n";
-}
-
-void initialization::print(const size_t depth) const {
-    print_depth(depth);
-
-    std::cout << "Variable Initialization\n";
-    variable.print(depth + 1);
-}
-
-void loop::print(const size_t depth) const {
-    print_depth(depth);
-
-    std::cout << "Loop; pre-eval=" << (pre_eval ? "true" : "false") << "\n";
-    condition->print(depth + 1);
-    body.print(depth + 1);
-}
-
-void if_statement::print(const size_t depth) const {
-    print_depth(depth);
-    std::cout << "If Statement\n";
-    condition->print(depth + 1);
-    body.print(depth + 1);
-
-    if (!else_body)
-        return;
-
-    print_depth(depth);
-    std::cout << "Else\n";
-
-    else_body->print(depth + 1);
-}
-
-void method_call::print(const size_t depth) const {
-    print_depth(depth);
-
-    std::cout << "Method call " << method_name << "\n";
-    for (const auto& arg : arguments)
-        arg->print(depth + 1);
-}
-
-void bin_op::print(const size_t depth) const {
-    print_depth(depth);
-
-    std::cout << "Binary " << pm::from_binop(type) << "\n";
-    left->print(depth + 1);
-    right->print(depth + 1);
-}
-
-void un_op::print(const size_t depth) const {
-    print_depth(depth);
-
-    std::cout << "Unary " << pm::from_unop(type) << "\n";
-    value->print(depth + 1);
-}
-
-void literal::print(const size_t depth) const {
-    print_depth(depth);
-
-    switch (value.index()) {
-        case 0:
-            std::cout << "Unsigned Int Literal " << std::get<unsigned int>(value) << "\n";
-            break;
-        case 1:
-            std::cout << "Int Literal " << std::get<int>(value) << "\n";
-            break;
-        case 2:
-            std::cout << "Double Literal " << std::get<double>(value) << "\n";
-            break;
-        case 3:
-            std::cout << "Char Literal " << std::get<char>(value) << "\n";
-            break;
-        case 4:
-            std::cout << "String Literal " << std::get<std::string_view>(value) << "\n";
-            break;
-        default:
-            throw std::runtime_error("Invalid literal type");
+            val = std::make_unique<cast>(std::move(val), array_type);
+        }
     }
 }
 
-void assignment::print(const size_t depth) const {
-    print_depth(depth);
+struct_initializer::struct_initializer(std::string_view struct_type, std::vector<std::unique_ptr<nodes::expression>> init_list)
+    : struct_type(struct_type), values(std::move(init_list)) {
+    auto find = ast::struct_types.find(struct_type);
 
-    std::cout << "Assignment\n";
-    lhs->print(depth + 1);
-    rhs->print(depth + 1);
-}
+    if (find == ast::struct_types.end())
+        throw std::runtime_error("Struct type not found");
 
-void raw_var::print(size_t depth) const {
-    print_depth(depth);
+    const auto &struct_decl = find->second;
 
-    std::cout << "Raw Variable Reference: " << name << "\n";
-}
+    if (struct_decl.size() != values.size())
+        throw std::runtime_error("Initializers do not match struct fields!");
 
-void for_loop::print(size_t depth) const {
-    print_depth(depth);
-    std::cout << "For loop\n";
+    for (int i = 0; i < values.size(); ++i) {
+        const auto val_type = values[i]->get_type();
+        const auto expected_type = struct_decl[i].type;
 
-    print_depth(depth + 1);
-    std::cout << "Init\n";
-    init->print(depth + 2);
+        if (val_type != expected_type) {
+            if (!val_type.is_intrinsic() || !expected_type.is_intrinsic())
+                throw std::runtime_error("Non-intrinsic types cannot be casted (yet)!");
 
-    print_depth(depth + 1);
-    std::cout << "Condition\n";
-    condition->print(depth + 2);
-
-    print_depth(depth + 1);
-    std::cout << "Update\n";
-    update->print(depth + 2);
-
-    print_depth(depth + 1);
-    std::cout << "Body\n";
-    body.print(depth + 2);
-}
-
-void expression_root::print(size_t depth) const {
-    expr->print(depth);
+            values[i] = std::make_unique<cast>(std::move(values[i]), expected_type);
+        }
+    }
 }

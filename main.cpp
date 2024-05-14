@@ -13,6 +13,7 @@ int main(int argc, char** argv) {
             .gen_ast();
 
     pipeline.ast->print(0);
+    pipeline.gen_llvm();
 
     return 0;
 }
