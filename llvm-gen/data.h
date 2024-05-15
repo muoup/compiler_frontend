@@ -15,4 +15,5 @@ namespace cg {
     extern const std::unordered_map<ast::nodes::bin_op_type, llvm::CmpInst::Predicate> i_cmp_map;
     extern const std::unordered_map<ast::nodes::bin_op_type, llvm::CmpInst::Predicate> f_cmp_map;
 
+    std::string stringify(std::string_view str);
 }

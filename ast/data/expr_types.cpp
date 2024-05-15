@@ -9,10 +9,13 @@ variable_type method_call::get_type() const {
 }
 
 variable_type initialization::get_type() const {
-    return variable.type;
+    return instance.type;
 }
 
 variable_type var_ref::get_type() const {
+    if (!type)
+        return variable_type::void_type();
+
     return type->change_var_ref(true);
 }
 

@@ -10,12 +10,12 @@
 
 using namespace in;
 
-file_pipeline& file_pipeline::load_file(std::string_view file_name) {
-    std::ifstream file { std::string(file_name) };
+file_pipeline & file_pipeline::load_file() {
+    std::ifstream file { env.output_file };
 
     // At some point I really should move from using the barbaric C++ exception system
     if (!file.is_open())
-        throw std::runtime_error("Failed to open file: " + std::string(file_name));
+        throw std::runtime_error("Failed to open file: " + env.output_file);
 
     std::string line;
     std::ostringstream code_stream;

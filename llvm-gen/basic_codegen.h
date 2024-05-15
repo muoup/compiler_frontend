@@ -12,7 +12,7 @@ namespace cg {
     };
 
     struct scope_variable {
-        llvm::AllocaInst* var_allocation;
+        llvm::Value* var_allocation;
         const struct_definition* struct_type = nullptr;
         bool is_const;
     };
@@ -26,7 +26,7 @@ namespace cg {
         std::vector<std::shared_ptr<var_table>> var_tables;
         std::shared_ptr<std::unordered_map<std::string_view, struct_definition>> struct_table;
 
-        llvm::BasicBlock *entry = nullptr;
+        llvm::BasicBlock *block = nullptr;
         llvm::Function* current_function = nullptr;
 
         const scope_variable& get_variable(std::string_view name) const;

@@ -64,7 +64,7 @@ namespace ast::pm {
                     if (!var_ref)
                         throw std::runtime_error("Cannot auto-complete array initialization for non-variable");
 
-                    var_ref->variable.type.array_length = initializer_list->values.size();
+                    var_ref->instance.type.array_length = initializer_list->values.size();
                     l_type = var_ref->get_type();
                 }
 

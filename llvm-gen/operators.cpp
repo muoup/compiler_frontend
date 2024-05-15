@@ -49,12 +49,14 @@ llvm::Value *generate_comparison(const pseudo_bin_op &ref, cg::scope_data &scope
     auto lhs = ref.left->generate_code(scope);
     auto rhs = ref.right->generate_code(scope);
 
-    if (ref.left->get_type().is_fp()) {
+    auto l_type = ref.left->get_type();
+
+    if (l_type.is_fp()) {
         return scope.builder.CreateFCmp(
                 *pm::find_element(cg::f_cmp_map, ref.type),
                 lhs, rhs
         );
-    } else {
+    } else if (l_type.is_int()) {
         auto i_cmp = *pm::find_element(cg::i_cmp_map, ref.type);
 
         if (ref.type == nodes::bin_op_type::eq || ref.type == nodes::bin_op_type::neq)
@@ -68,6 +70,8 @@ llvm::Value *generate_comparison(const pseudo_bin_op &ref, cg::scope_data &scope
                 lhs, rhs
         );
     }
+
+    throw std::runtime_error("Invalid comparison type.");
 }
 
 llvm::Instruction::BinaryOps cg::get_llvm_binop(const nodes::bin_op_type type, const bool is_fp) {

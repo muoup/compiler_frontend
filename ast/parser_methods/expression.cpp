@@ -204,7 +204,7 @@ nodes::method_call pm::parse_method_call(lex_cptr &ptr, const lex_cptr end) {
         nodes::variable_type expected_type = arg->get_type();
 
         if (i < fn->params.data.size()) {
-            expected_type = fn->params.data[i].type;
+            expected_type = fn->params.data[i].instance.type;
         } else if (fn->params.is_var_args) {
             if (!expected_type.is_pointer()) {
                 expected_type = nodes::variable_type {
@@ -310,6 +310,6 @@ nodes::initialization pm::parse_initialization(lex_cptr &ptr, const lex_cptr end
     scope_stack.back().emplace(type_inst.var_name, type_inst.type);
 
     return nodes::initialization {
-        std::move(type_inst)
+            std::move(type_inst)
     };
 }

@@ -29,13 +29,13 @@ namespace ast::nodes {
 
     struct initialization : expression {
         NODENAME("INITIALIZATION");
-        CHILDREN(variable);
+        CHILDREN(instance);
 
-        type_instance variable;
+        nodes::type_instance instance;
 
-        initialization(initialization&&) noexcept = default;
+        initialization(nodes::initialization&&) noexcept = default;
         initialization(type_instance variable)
-            : variable(std::move(variable)) {}
+            : instance(std::move(variable)) {}
 
         CG_BASICGEN();
         ~initialization() = default;
@@ -383,7 +383,7 @@ namespace ast::nodes {
 
         function_prototype(function_prototype&&) noexcept = default;
         function_prototype(variable_type return_type, std::string_view method_name, method_params params)
-                : return_type(return_type), fn_name(method_name), params(params) {}
+                : return_type(return_type), fn_name(method_name), params(std::move(params)) {}
 
         ~function_prototype() = default;
 

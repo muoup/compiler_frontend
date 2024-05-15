@@ -33,3 +33,51 @@ const std::unordered_map<ast::nodes::bin_op_type, llvm::CmpInst::Predicate> cg::
         { ast::nodes::bin_op_type::lte, llvm::CmpInst::Predicate::FCMP_OLE },
         { ast::nodes::bin_op_type::gte, llvm::CmpInst::Predicate::FCMP_OGE },
 };
+
+char escape_char(const char c) {
+    switch (c) {
+        case 'n':
+            return '\n';
+        case 't':
+            return '\t';
+        case 'r':
+            return '\r';
+        case '0':
+            return '\0';
+        case 'a':
+            return '\a';
+        case 'b':
+            return '\b';
+        case 'f':
+            return '\f';
+        case 'v':
+            return '\v';
+        case '\\':
+            return '\\';
+        case '\'':
+            return '\'';
+        case '\"':
+            return '\"';
+        default:
+            throw std::runtime_error(std::format("Invalid escape sequence: \\{}", c));
+    }
+}
+
+std::string cg::stringify(std::string_view str) {
+    std::string out;
+
+    out.reserve(str.size());
+
+    for (size_t i = 0; i < str.size(); i++) {
+        if (str[i] == '\\') {
+            if (i + 1 >= str.size())
+                throw std::runtime_error("Invalid escape sequence");
+
+            out.push_back(escape_char(str[++i]));
+        } else {
+            out.push_back(str[i]);
+        }
+    }
+
+    return out;
+}

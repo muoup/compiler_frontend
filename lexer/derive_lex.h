@@ -14,12 +14,14 @@ namespace lex {
         str_ptr end;
 
         derived_lex(const lex_type type, str_ptr start, str_ptr end, const ptrdiff_t skip_chars = 0)
-            : type(type), span(start, end + 1), end(end + skip_chars) { }
+            : type(type), span(start, end), end(end + skip_chars - 1) { }
     };
 
     std::optional<derived_lex> derive_strlit(str_ptr start, str_ptr end);
-
     std::optional<derived_lex> derive_charlit(str_ptr start, str_ptr end);
+
+    char escape_char(char c);
+
     lex_token gen_numeric(str_ptr start, str_ptr end);
 
     std::optional<derived_lex> derive_expr_op(str_ptr start, str_ptr end);

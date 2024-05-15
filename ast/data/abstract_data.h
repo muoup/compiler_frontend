@@ -5,6 +5,8 @@
 #include "node_interfaces.h"
 
 namespace ast::nodes {
+    struct initialization;
+
     enum class intrinsic_type {
         i8, i16, i32, i64,
         u8, u16, u32, u64,
@@ -20,7 +22,7 @@ namespace ast::nodes {
     };
 
     enum class bin_op_type {
-        add, sub, mul, div, mod, pow,
+        add, sub, mul, div, mod,
         b_and, b_or, b_xor, shl, shr,
         l_and, l_or, l_xor,
 
@@ -36,7 +38,7 @@ namespace ast::nodes {
     enum class assn_type {
         none,
 
-        plus_eq, minus_eq, mul_eq, div_eq, mod_eq, pow_eq,
+        plus_eq, minus_eq, mul_eq, div_eq, mod_eq,
         b_and_eq, b_or_eq, b_xor_eq, shl_eq, shr_eq
     };
 
@@ -93,7 +95,7 @@ namespace ast::nodes {
 
     struct type_instance : printable {
         NODENAME("TYPE_INSTANCE");
-        CHILDREN(type);
+        DETAILS(var_name);
 
         variable_type type;
         std::string_view var_name;
@@ -105,7 +107,7 @@ namespace ast::nodes {
     };
 
     struct method_params {
-        std::vector<type_instance> data;
+        std::vector<initialization> data;
         bool is_var_args = false;
     };
 }

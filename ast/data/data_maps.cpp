@@ -25,7 +25,6 @@ const std::unordered_map<bin_op_type, uint16_t> pm::binop_prec {
     { bin_op_type::mod,   20 },
     { bin_op_type::shl,   20 },
     { bin_op_type::shr,   20 },
-    { bin_op_type::pow,   30 }
 };
 
 const std::unordered_map<std::string_view, bin_op_type> pm::binop_type_map {
@@ -47,7 +46,6 @@ const std::unordered_map<std::string_view, bin_op_type> pm::binop_type_map {
     { "%" , bin_op_type::mod   },
     { "<<", bin_op_type::shl   },
     { ">>", bin_op_type::shr   },
-    { "**", bin_op_type::pow   },
     { ".",  bin_op_type::acc   },
     { "->", bin_op_type::accdf },
 };

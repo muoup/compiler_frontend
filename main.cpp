@@ -7,8 +7,10 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    in::file_pipeline pipeline;
-    pipeline.load_file(argv[1])
+    in::file_pipeline pipeline{argc, argv};
+
+    pipeline
+            .load_file()
             .gen_lex()
             .gen_ast();
 

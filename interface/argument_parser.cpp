@@ -13,10 +13,12 @@ bool get_arg(c_args& args, int& i, std::string_view& arg) {
 }
 
 bool get_filename(c_args& args, std::string_view& arg) {
-    if (args.argv[args.argc - 1][0] == '-')
+    auto file_name = args.argv[args.argc - 1];
+
+    if (file_name[0] == '-')
         return false;
 
-    arg = args.argv[args.argc - 1];
+    arg = file_name;
     return true;
 }
 
@@ -59,5 +61,6 @@ arg_env in::parse_args(int argc, char **argv) {
         std::exit(1);
     }
 
+    env.output_file = arg;
     return env;
 }

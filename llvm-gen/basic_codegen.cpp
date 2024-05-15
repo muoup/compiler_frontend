@@ -2,6 +2,7 @@
 
 #include "types.h"
 #include "operators.h"
+#include "data.h"
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/IRBuilder.h>
@@ -11,8 +12,8 @@ using namespace cg;
 
 scope_data gen_inner_scope(scope_data &scope) {
     scope_data data = scope;
-    data.entry = llvm::BasicBlock::Create(data.context, "entry", data.current_function);
-    data.builder.SetInsertPoint(data.entry);
+    data.block = llvm::BasicBlock::Create(scope.context, "entry", scope.current_function);
+    data.builder.SetInsertPoint(data.block);
     data.var_tables.emplace_back(std::make_shared<var_table>());
     return data;
 }
@@ -52,7 +53,7 @@ void cg::generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream)
     auto module = std::make_shared<llvm::Module>("main", context);
     llvm::IRBuilder<> builder { context };
 
-    scope_data scope {
+    scope_data prog_scope {
         context,
         module,
         builder,
@@ -60,7 +61,7 @@ void cg::generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream)
         std::make_shared<std::unordered_map<std::string_view, struct_definition>>()
     };
 
-    root.generate_code(scope);
+    root.generate_code(prog_scope);
     module->print(ostream, nullptr);
 }
 
@@ -92,7 +93,7 @@ llvm::Value* literal::generate_code(cg::scope_data &scope) const {
             );
         case STRING:
             return scope.builder.CreateGlobalStringPtr(
-                    std::get<std::string_view>(value)
+                stringify(std::get<std::string_view>(value))
             );
         default:
             std::unreachable();
@@ -138,14 +139,18 @@ llvm::Value* cast::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* load::generate_code(cg::scope_data &scope) const {
-    auto *val = expr->generate_code(scope);
+    auto val = expr->generate_code(scope);
+    auto type = expr->get_type();
 
-    if (!val->getType()->isPointerTy())
-        throw std::runtime_error("Cannot dereference non-pointer type.");
+    if (type.is_var_ref)
+        type.is_var_ref = false;
+    else
+        type = type.dereference();
 
-    auto *new_type = get_llvm_type(get_type(), scope);
+    if (val->getType()->isPointerTy())
+        return scope.builder.CreateLoad(get_llvm_type(type, scope), val);
 
-    return scope.builder.CreateLoad(new_type, val);
+    throw std::runtime_error("Cannot load non-pointer and non-argument type.");
 }
 
 llvm::Value* expression_shield::generate_code(cg::scope_data &scope) const {
@@ -189,9 +194,9 @@ llvm::Value* initialization::generate_code(cg::scope_data &scope) const {
     if (init_type.array_length)
         type = llvm::ArrayType::get(type, init_type.array_length);
 
-    return add_to_table(scope.var_tables, variable.var_name, scope_variable {
+    return add_to_table(scope.var_tables, instance.var_name, scope_variable {
         .var_allocation = scope.builder.CreateAlloca(type),
-        .struct_type = get_struct_ref(variable.type, scope),
+        .struct_type = get_struct_ref(instance.type, scope),
         .is_const = false
     }).var_allocation;
 }
@@ -216,15 +221,16 @@ llvm::Value* method_call::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* var_ref::generate_code(cg::scope_data &scope) const {
-    return scope.get_variable(var_name).var_allocation;
+    const auto &var = scope.get_variable(var_name);
+
+    return var.var_allocation;
 }
 
 llvm::Value* return_op::generate_code(cg::scope_data &scope) const {
     if (val) {
-        auto ret_val = val->generate_code(scope);
-        auto ret_type = scope.current_function->getReturnType();
-
-        return scope.builder.CreateRet(ret_val);
+        return scope.builder.CreateRet(
+            val->generate_code(scope)
+        );
     }
 
     return scope.builder.CreateRetVoid();
@@ -378,7 +384,7 @@ llvm::BasicBlock* scope_block::generate_code(cg::scope_data &scope) const {
     for (const auto &stmt : statements)
         stmt->generate_code(in_scope_block);
 
-    return in_scope_block.entry;
+    return in_scope_block.block;
 }
 
 llvm::Function* function_prototype::generate_code(cg::scope_data &scope) const {
@@ -388,14 +394,14 @@ llvm::Function* function_prototype::generate_code(cg::scope_data &scope) const {
 
     llvm_parameters.reserve(params.data.size());
     for (const auto &param : params.data)
-        llvm_parameters.emplace_back(get_llvm_type(param.type, scope));
+        llvm_parameters.emplace_back(get_llvm_type(param.instance.type, scope));
 
     llvm::FunctionType *func_type = llvm::FunctionType::get(type, llvm_parameters, params.is_var_args);
     llvm::Value *func_val = scope.module->getOrInsertFunction(fn_name, func_type).getCallee();
     llvm::Function *func = llvm::cast<llvm::Function>(func_val);
 
     for (auto i = 0; i < params.data.size(); ++i)
-        func->args().begin()[i].setName(params.data[i].var_name);
+        func->args().begin()[i].setName(params.data[i].instance.var_name);
 
     return func;
 }
@@ -403,10 +409,23 @@ llvm::Function* function_prototype::generate_code(cg::scope_data &scope) const {
 llvm::Value* function::generate_code(cg::scope_data &scope) const {
     auto *func = prototype->generate_code(scope);
 
-    scope_data param_scope = gen_inner_scope(scope);
-    param_scope.current_function = func;
+    scope.current_function = func;
+    auto param_scope = gen_inner_scope(scope);
 
-    body.generate_code(param_scope);
+    for (size_t i = 0; i < prototype->params.data.size(); ++i) {
+        auto &param = prototype->params.data[i];
+        auto *arg = &func->args().begin()[i];
+
+        arg->setName(param.instance.var_name);
+
+        auto param_alloc = param.generate_code(param_scope);
+        param_scope.builder.CreateStore(arg, param_alloc);
+    }
+
+    auto body_scope = body.generate_code(param_scope);
+    scope.builder.SetInsertPoint(param_scope.block);
+    scope.builder.CreateBr(body_scope);
+    param_scope.current_function = nullptr;
     return func;
 }
 

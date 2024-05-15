@@ -11,16 +11,20 @@
 
 #include "../lexer/lex.h"
 #include "../ast/data/ast_nodes.h"
+#include "argument_parser.h"
 
 namespace in {
     struct file_pipeline {
+        arg_env env;
+
         std::string code;
         std::vector<lex::lex_token> tokens;
         std::unique_ptr<ast::nodes::root> ast;
 
-        file_pipeline() = default;
+        file_pipeline(int argc, char** argv)
+            : env(parse_args(argc, argv)) {}
 
-        file_pipeline& load_file(std::string_view file_name);
+        file_pipeline &load_file();
         file_pipeline& gen_lex();
         file_pipeline& gen_ast();
 

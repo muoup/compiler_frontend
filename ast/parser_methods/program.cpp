@@ -9,7 +9,12 @@ using namespace ast;
 
 std::unique_ptr<nodes::program_level_stmt> pm::parse_program_level_stmt(ast::lex_cptr &ptr, ast::lex_cptr end) {
     if (peek(ptr, end)->span == "fn") {
-        return parse_function(ptr, end);
+        auto prototype = parse_function_prototype(ptr, end);
+
+        if (test_token_val(ptr, ";"))
+            return prototype;
+
+        return parse_function(ptr, end, std::move(prototype));
     } else if (peek(ptr, end)->span == "struct") {
         return parse_struct_decl(ptr, end);
     } else if (test_token_val(ptr, "libc")) {
@@ -24,13 +29,13 @@ std::unique_ptr<nodes::program_level_stmt> pm::parse_program_level_stmt(ast::lex
 ast::nodes::method_params pm::parse_method_params(lex_cptr &ptr, const lex_cptr end) {
     ast::nodes::method_params method_params;
 
-    for (auto &param : parse_split_type_inst(ptr, end)) {
+    for (auto param : parse_split_type_inst(ptr, end)) {
         if (param.var_name == "...") {
             method_params.is_var_args = true;
             break;
         }
 
-        method_params.data.emplace_back(param.type, param.var_name);
+        method_params.data.emplace_back(std::move(param));
     }
 
     return method_params;
@@ -61,17 +66,15 @@ std::unique_ptr<nodes::function_prototype> pm::parse_function_prototype(ast::lex
     return fn_prototype;
 }
 
-std::unique_ptr<nodes::function> pm::parse_function(lex_cptr &ptr, const lex_cptr end) {
+std::unique_ptr<nodes::function> pm::parse_function(lex_cptr &ptr, const lex_cptr end, std::unique_ptr<nodes::function_prototype> prototype) {
     scope_stack.emplace_back();
 
-    auto prototype = parse_function_prototype(ptr, end);
     current_function = prototype.get();
 
-    auto body = parse_body(ptr, end);
-
     for (const auto &param : prototype->params.data)
-        scope_stack.back().emplace(param.var_name, param.type);
+        scope_stack.back().emplace(param.instance.var_name, param.instance.type);
 
+    auto body = parse_body(ptr, end);
     auto &code_expressions = body.statements;
 
     if (code_expressions.empty() || dynamic_cast<nodes::return_op*>(code_expressions.back().get()) == nullptr) {
