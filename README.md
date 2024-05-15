@@ -18,7 +18,7 @@ for a basic "Hello, World!" program:
 ```
 libc fn printf(char* str, ...) -> i32;
 
-i32 main() {
+fn main() -> i32 {
     printf("Hello, World!\n");
 }
 ```
@@ -32,13 +32,13 @@ be fixed in the near future.
 ```
 libc fn printf(char* str, ...) -> i32;
 
-void test() {
+fn test() {
     for (i32 i = 0; i < 10; i++) {
         printf("%d ", i);
     }
 }
 
-i32 main() {
+fn main() -> i32 {
     test();
 }
 ```
@@ -53,7 +53,7 @@ struct example_struct {
     i32 a, i32 b
 }
 
-i32 main() {
+fn main() -> i32 {
     example_struct s = {1, 2};
     i32[] arr = {1, s.b, 3, 4, 5};
     
