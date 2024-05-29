@@ -11,6 +11,7 @@ int main(int argc, char** argv) {
 
     pipeline
             .load_file()
+            .pre_process()
             .gen_lex()
             .gen_ast();
 

@@ -88,6 +88,7 @@ namespace ast::nodes {
         bool is_int() const;
         bool is_signed() const;
         bool is_fp() const;
+        bool is_void() const;
         size_t get_size() const;
         bool operator ==(const variable_type &other) const;
         std::string type_str() const;

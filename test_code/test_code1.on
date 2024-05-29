@@ -1,4 +1,4 @@
-libc fn printf(char* str, ...) -> i32;
+#include libc
 
 fn main(i32 argc, char** argv) {
     printf("Arguments Received: %d\n", argc);

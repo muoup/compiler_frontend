@@ -6,6 +6,8 @@
 
 #ifdef LLVM_ENABLE
 #include "../llvm-gen/basic_codegen.h"
+#include "../preprocess/preprocessor.hpp"
+
 #endif
 
 using namespace in;
@@ -27,6 +29,12 @@ file_pipeline & file_pipeline::load_file() {
 
     this->code = code_stream.str();
     file.close();
+
+    return *this;
+}
+
+file_pipeline &file_pipeline::pre_process() {
+    pp::preprocess(*this);
 
     return *this;
 }

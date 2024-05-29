@@ -63,6 +63,10 @@ bool variable_type::is_fp() const {
     return lit_type == intrinsic_type::f32 || lit_type == intrinsic_type::f64;
 }
 
+bool variable_type::is_void() const {
+    return is_intrinsic() && std::get<intrinsic_type>(type) == intrinsic_type::void_;
+}
+
 size_t variable_type::get_size() const {
     if (is_intrinsic())
         return *pm::find_element(intrinsic_size, std::get<intrinsic_type>(type));

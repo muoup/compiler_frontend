@@ -24,7 +24,8 @@ namespace in {
         file_pipeline(int argc, char** argv)
             : env(parse_args(argc, argv)) {}
 
-        file_pipeline &load_file();
+        file_pipeline& load_file();
+        file_pipeline& pre_process();
         file_pipeline& gen_lex();
         file_pipeline& gen_ast();
 

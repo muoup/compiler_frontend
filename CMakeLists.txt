@@ -14,7 +14,9 @@ option(ENABLE_LLVM "Build with LLVM support" ON)
 option(ENABLE_TESTING "Build with testing support" ON)
 
 set(CMAKE_CXX_STANDARD 23)
-set(FILES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
+set(FILES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
+        preprocess/preprocessor.cpp
+        preprocess/preprocessor.hpp)
 
 function(build_dir dir)
     file(GLOB_RECURSE FILES_TEMP "${CMAKE_CURRENT_SOURCE_DIR}/${dir}/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/${dir}/*.h")
@@ -23,9 +25,13 @@ endfunction()
 
 message(STATUS "Building...")
 
+# Copy the lib directory into the build directory
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/lib DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 build_dir("ast")
 build_dir("lexer")
 build_dir("interface")
+build_dir("preprocess")
 
 if (ENABLE_LLVM)
     find_package(LLVM CONFIG REQUIRED)
