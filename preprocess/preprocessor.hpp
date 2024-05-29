@@ -7,5 +7,5 @@ namespace in {
 namespace pp {
 
     static bool handle_line(std::string_view line, std::stringstream &ss);
-    void preprocess(in::file_pipeline& pipeline);
+    void preprocess(std::string &code);
 }

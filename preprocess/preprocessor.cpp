@@ -1,7 +1,6 @@
 #include <sstream>
 #include <fstream>
 #include "preprocessor.hpp"
-#include "../interface/file_reader.h"
 
 void handle_imports(std::string_view line, std::stringstream &ss) {
     if (line.length() < 10)
@@ -25,7 +24,12 @@ void handle_imports(std::string_view line, std::stringstream &ss) {
         code_stream << read_line << '\n';
     }
 
-    ss << code_stream.str();
+    std::string code = code_stream.str();
+
+    pp::preprocess(code);
+
+    ss << code;
+
     inc_file.close();
 }
 
@@ -39,22 +43,22 @@ static bool pp::handle_line(std::string_view line, std::stringstream &ss) {
     return true;
 }
 
-void pp::preprocess(in::file_pipeline &pipeline) {
+void pp::preprocess(std::string &code) {
     std::stringstream ss;
 
-    auto line_begin = pipeline.code.begin();
-    auto line_end = pipeline.code.begin();
+    auto line_begin = code.begin();
+    auto line_end = code.begin();
 
-    while (line_end != pipeline.code.end()) {
-        line_end = std::find(line_begin, pipeline.code.end(), '\n');
+    while (line_end != code.end()) {
+        line_end = std::find(line_begin, code.end(), '\n');
         if (!handle_line({ line_begin, line_end }, ss))
             ss << std::string_view { line_begin, line_end } << '\n';
 
-        if (line_end == pipeline.code.end())
+        if (line_end == code.end())
             break;
 
         line_begin = line_end + 1;
     }
 
-    pipeline.code = ss.str();
+    code = ss.str();
 }

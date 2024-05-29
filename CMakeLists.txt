@@ -16,7 +16,9 @@ option(ENABLE_TESTING "Build with testing support" ON)
 set(CMAKE_CXX_STANDARD 23)
 set(FILES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
         preprocess/preprocessor.cpp
-        preprocess/preprocessor.hpp)
+        preprocess/preprocessor.hpp
+        interface/llvm_build.cpp
+        interface/llvm_build.hpp)
 
 function(build_dir dir)
     file(GLOB_RECURSE FILES_TEMP "${CMAKE_CURRENT_SOURCE_DIR}/${dir}/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/${dir}/*.h")

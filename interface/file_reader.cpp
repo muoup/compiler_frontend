@@ -34,7 +34,7 @@ file_pipeline & file_pipeline::load_file() {
 }
 
 file_pipeline &file_pipeline::pre_process() {
-    pp::preprocess(*this);
+    pp::preprocess(this->code);
 
     return *this;
 }
@@ -52,8 +52,12 @@ file_pipeline& file_pipeline::gen_ast() {
 #ifdef LLVM_ENABLE
 
 file_pipeline& file_pipeline::gen_llvm() {
-    cg::generate_code(*ast, llvm::outs());
+    this->module = cg::generate_code(*ast);
     return *this;
+}
+
+file_pipeline& file_pipeline::gen_exec() {
+
 }
 
 #endif

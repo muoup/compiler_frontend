@@ -48,7 +48,7 @@ const struct_definition& scope_data::get_struct(std::string_view name) const {
     return struct_table->at(name);
 }
 
-void cg::generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream) {
+std::shared_ptr<llvm::Module> cg::generate_code(const ast::nodes::root &root) {
     llvm::LLVMContext context;
     auto module = std::make_shared<llvm::Module>("main", context);
     llvm::IRBuilder<> builder { context };
@@ -62,7 +62,9 @@ void cg::generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream)
     };
 
     root.generate_code(prog_scope);
-    module->print(ostream, nullptr);
+//    module->print(ostream, nullptr);
+
+    return module;
 }
 
 llvm::Value* root::generate_code(cg::scope_data &scope) const {
@@ -410,22 +412,27 @@ llvm::Value* function::generate_code(cg::scope_data &scope) const {
     auto *func = prototype->generate_code(scope);
 
     scope.current_function = func;
-    auto param_scope = gen_inner_scope(scope);
+    if (!prototype->params.data.empty()) {
+        auto param_scope = gen_inner_scope(scope);
 
-    for (size_t i = 0; i < prototype->params.data.size(); ++i) {
-        auto &param = prototype->params.data[i];
-        auto *arg = &func->args().begin()[i];
+        for (size_t i = 0; i < prototype->params.data.size(); ++i) {
+            auto &param = prototype->params.data[i];
+            auto *arg = &func->args().begin()[i];
 
-        arg->setName(param.instance.var_name);
+            arg->setName(param.instance.var_name);
 
-        auto param_alloc = param.generate_code(param_scope);
-        param_scope.builder.CreateStore(arg, param_alloc);
+            auto param_alloc = param.generate_code(param_scope);
+            param_scope.builder.CreateStore(arg, param_alloc);
+        }
+
+        auto body_scope = body.generate_code(param_scope);
+        scope.builder.SetInsertPoint(param_scope.block);
+        scope.builder.CreateBr(body_scope);
+        param_scope.current_function = nullptr;
+    } else {
+        body.generate_code(scope);
     }
 
-    auto body_scope = body.generate_code(param_scope);
-    scope.builder.SetInsertPoint(param_scope.block);
-    scope.builder.CreateBr(body_scope);
-    param_scope.current_function = nullptr;
     return func;
 }
 

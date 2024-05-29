@@ -33,5 +33,5 @@ namespace cg {
         const struct_definition& get_struct(std::string_view name) const;
     };
 
-    void generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream);
+    std::shared_ptr<llvm::Module> generate_code(const ast::nodes::root &root);
 }
