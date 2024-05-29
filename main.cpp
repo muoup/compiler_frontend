@@ -15,8 +15,12 @@ int main(int argc, char** argv) {
             .gen_lex()
             .gen_ast();
 
-    pipeline.ast->print(0);
-    pipeline.gen_llvm();
+    pipeline
+            .gen_llvm()
+            .print_llvm();
+
+//    pipeline.ast->print(0);
+//    pipeline.gen_llvm();
 
     return 0;
 }

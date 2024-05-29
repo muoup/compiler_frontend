@@ -35,6 +35,7 @@ namespace in {
 
 #ifdef LLVM_ENABLE
         file_pipeline& gen_llvm();
+        file_pipeline& print_llvm();
 #endif
 
         file_pipeline& gen_exec();

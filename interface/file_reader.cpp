@@ -56,6 +56,11 @@ file_pipeline& file_pipeline::gen_llvm() {
     return *this;
 }
 
+file_pipeline& file_pipeline::print_llvm() {
+    this->module->print(llvm::outs(), nullptr);
+    return *this;
+}
+
 file_pipeline& file_pipeline::gen_exec() {
 
 }

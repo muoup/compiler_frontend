@@ -1,6 +1,7 @@
 libc fn printf(char* format, ...) -> i32;
 libc fn puts(char* str) -> i32;
-libc fn gets(char* str) -> i32;
+
+libc fn gets(char* format, ...) -> i32;
 
 libc fn malloc(u64 size) -> void*;
 libc fn free(void* ptr);

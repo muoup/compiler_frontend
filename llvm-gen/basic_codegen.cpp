@@ -10,6 +10,8 @@
 using namespace ast::nodes;
 using namespace cg;
 
+llvm::LLVMContext context;
+
 scope_data gen_inner_scope(scope_data &scope) {
     scope_data data = scope;
     data.block = llvm::BasicBlock::Create(scope.context, "entry", scope.current_function);
@@ -49,7 +51,6 @@ const struct_definition& scope_data::get_struct(std::string_view name) const {
 }
 
 std::shared_ptr<llvm::Module> cg::generate_code(const ast::nodes::root &root) {
-    llvm::LLVMContext context;
     auto module = std::make_shared<llvm::Module>("main", context);
     llvm::IRBuilder<> builder { context };
 
@@ -176,7 +177,7 @@ llvm::Value* struct_initializer::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* array_initializer::generate_code(cg::scope_data &scope) const {
-    auto type = get_llvm_type(array_type, scope);
+    auto type = get_llvm_type(array_type.dereference(), scope);
 
     llvm::Value* aggregate = llvm::UndefValue::get(llvm::ArrayType::get(type, values.size()));
 
@@ -188,13 +189,15 @@ llvm::Value* array_initializer::generate_code(cg::scope_data &scope) const {
 
 llvm::Value* initialization::generate_code(cg::scope_data &scope) const {
     auto init_type = get_type();
-    auto type = get_llvm_type(init_type, scope);
+    llvm::Type* type;
 
     if (init_type.array_length == -1)
         throw std::runtime_error("Cannot initialize array with unknown length.");
 
     if (init_type.array_length)
-        type = llvm::ArrayType::get(type, init_type.array_length);
+        type = llvm::ArrayType::get(get_llvm_type(init_type.dereference(), scope), init_type.array_length);
+    else
+        type = get_llvm_type(init_type, scope);
 
     return add_to_table(scope.var_tables, instance.var_name, scope_variable {
         .var_allocation = scope.builder.CreateAlloca(type),
