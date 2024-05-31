@@ -16,7 +16,7 @@ the syntax is very similar to C, with a few minor differences. The following exa
 for a basic "Hello, World!" program:
 
 ```
-libc fn printf(char* str, ...) -> i32;
+_libc fn printf(char* str, ...) -> i32;
 
 fn main() -> i32 {
     printf("Hello, World!\n");
@@ -30,7 +30,7 @@ Note that as the compiler works with non-owning strings, string literals cannot 
 be fixed in the near future.
 
 ```
-libc fn printf(char* str, ...) -> i32;
+_libc fn printf(char* str, ...) -> i32;
 
 fn test() {
     for (i32 i = 0; i < 10; i++) {
@@ -47,7 +47,7 @@ One final example of the language's capabilities is the ability for structs and 
 utilizing a struct to store two integers and an array to store 5 integers, which will output the numbers 1, 2, 3, 4, and 5:
 
 ```
-libc fn printf(char* str, ...) -> i32;
+_libc fn printf(char* str, ...) -> i32;
 
 struct example_struct {
     i32 a, i32 b

@@ -1,5 +1,6 @@
 #include <sstream>
 #include <fstream>
+#include <algorithm>
 #include "preprocessor.hpp"
 
 void handle_imports(std::string_view line, std::stringstream &ss) {
@@ -51,6 +52,7 @@ void pp::preprocess(std::string &code) {
 
     while (line_end != code.end()) {
         line_end = std::find(line_begin, code.end(), '\n');
+
         if (!handle_line({ line_begin, line_end }, ss))
             ss << std::string_view { line_begin, line_end } << '\n';
 

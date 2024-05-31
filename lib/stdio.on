@@ -9,5 +9,5 @@ fn println(char *str) {
 }
 
 fn stdinput(char *str) {
-    gets(str);
+    scanf("%s", str);
 }

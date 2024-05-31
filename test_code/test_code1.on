@@ -3,8 +3,9 @@
 fn main() {
     char[32] name;
 
+    println("Enter your name: ");
     stdinput(name);
 
-    print("Hello: ");
+    print("Hello, ");
     println(name);
 }

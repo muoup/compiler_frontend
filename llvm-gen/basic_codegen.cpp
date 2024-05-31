@@ -3,6 +3,7 @@
 #include "types.h"
 #include "operators.h"
 #include "data.h"
+#include "../ast/util.h"
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/IRBuilder.h>
@@ -59,7 +60,8 @@ std::shared_ptr<llvm::Module> cg::generate_code(const ast::nodes::root &root) {
         module,
         builder,
         std::vector { std::make_shared<var_table>() },
-        std::make_shared<std::unordered_map<std::string_view, struct_definition>>()
+        std::make_shared<std::unordered_map<std::string_view, struct_definition>>(),
+        std::make_shared<std::unordered_map<std::string_view, function_definition>>(),
     };
 
     root.generate_code(prog_scope);
@@ -69,8 +71,21 @@ std::shared_ptr<llvm::Module> cg::generate_code(const ast::nodes::root &root) {
 }
 
 llvm::Value* root::generate_code(cg::scope_data &scope) const {
-    for (const auto &prog_stmts : program_level_statements)
-        prog_stmts->generate_code(scope);
+    for (const auto &stmt : program_level_statements) {
+        if (auto *prototype = dynamic_cast<function_prototype*>(stmt.get())) {
+            if (scope.functions_table->contains(prototype->fn_name))
+                throw std::runtime_error("Function already exists in symbol table.");
+
+            scope.functions_table->emplace(prototype->fn_name, function_definition { prototype, nullptr });
+        } else {
+            stmt->generate_code(scope);
+        }
+    }
+
+    for (const auto &[name, fn] : *scope.functions_table) {
+        if (name == "main")
+            fn.node->generate_code(scope);
+    }
 
     return nullptr;
 }
@@ -145,12 +160,9 @@ llvm::Value* load::generate_code(cg::scope_data &scope) const {
     auto val = expr->generate_code(scope);
     auto type = expr->get_type();
 
-    if (type.is_var_ref)
-        type.is_var_ref = false;
-    else
-        type = type.dereference();
-
-    if (val->getType()->isPointerTy())
+    if (type.is_var_ref && type.is_pointer())
+        return val;
+    else if (type.is_var_ref || type.is_pointer())
         return scope.builder.CreateLoad(get_llvm_type(type, scope), val);
 
     throw std::runtime_error("Cannot load non-pointer and non-argument type.");
@@ -207,7 +219,7 @@ llvm::Value* initialization::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* method_call::generate_code(cg::scope_data &scope) const {
-    llvm::Function* func = scope.module->getFunction(method_name);
+    llvm::Function* func = scope.functions_table->at(method_name).get(scope);
 
     if (!func)
         throw std::runtime_error("Function not found.");
@@ -219,8 +231,6 @@ llvm::Value* method_call::generate_code(cg::scope_data &scope) const {
 
     if (arguments.size() != func->arg_size() && !func->isVarArg())
         throw std::runtime_error("Argument count mismatch.");
-
-    auto call_param = this->arguments[0]->get_type();
 
     return scope.builder.CreateCall(func, args);
 }
@@ -321,7 +331,6 @@ llvm::Value* match::generate_code(cg::scope_data &scope) const {
     }
 
     scope.builder.CreateBr(default_block);
-
     scope.builder.SetInsertPoint(merge_block);
     return nullptr;
 }
@@ -395,6 +404,10 @@ llvm::BasicBlock* scope_block::generate_code(cg::scope_data &scope) const {
 llvm::Function* function_prototype::generate_code(cg::scope_data &scope) const {
     llvm::Type *type = get_llvm_type(this->return_type, scope);
 
+    // As the compiler builds functions as they are called from another method, in case we are
+    // coming from a function call, the insert block needs to be saved, so we can return to it.
+    auto current_block = scope.builder.GetInsertBlock();
+
     std::vector<llvm::Type*> llvm_parameters;
 
     llvm_parameters.reserve(params.data.size());
@@ -408,35 +421,58 @@ llvm::Function* function_prototype::generate_code(cg::scope_data &scope) const {
     for (auto i = 0; i < params.data.size(); ++i)
         func->args().begin()[i].setName(params.data[i].instance.var_name);
 
+    scope.functions_table->at(fn_name).function = func;
+
+    if (implementation) {
+        scope.current_function = func;
+        implementation->generate_code(scope);
+        scope.current_function = nullptr;
+    }
+
+    scope.builder.SetInsertPoint(current_block);
     return func;
 }
 
 llvm::Value* function::generate_code(cg::scope_data &scope) const {
-    auto *func = prototype->generate_code(scope);
-
-    scope.current_function = func;
     if (!prototype->params.data.empty()) {
+        bool block_needed = false;
         auto param_scope = gen_inner_scope(scope);
 
         for (size_t i = 0; i < prototype->params.data.size(); ++i) {
             auto &param = prototype->params.data[i];
-            auto *arg = &func->args().begin()[i];
+            auto *arg = &scope.current_function->args().begin()[i];
 
             arg->setName(param.instance.var_name);
 
-            auto param_alloc = param.generate_code(param_scope);
-            param_scope.builder.CreateStore(arg, param_alloc);
+            auto type = param.get_type();
+
+            if (type.is_pointer()) {
+                add_to_table(param_scope.var_tables, param.instance.var_name, scope_variable {
+                    .var_allocation = arg,
+                    .struct_type = get_struct_ref(type, scope),
+                    .is_const = false
+                });
+            } else {
+                block_needed = true;
+                param_scope.builder.CreateStore(
+                    arg,
+                    param.generate_code(param_scope)
+                );
+            }
         }
 
         auto body_scope = body.generate_code(param_scope);
         scope.builder.SetInsertPoint(param_scope.block);
-        scope.builder.CreateBr(body_scope);
-        param_scope.current_function = nullptr;
+
+        if (!block_needed)
+            param_scope.block->eraseFromParent();
+        else
+            scope.builder.CreateBr(body_scope);
     } else {
         body.generate_code(scope);
     }
 
-    return func;
+    return nullptr;
 }
 
 llvm::Value *struct_declaration::generate_code(cg::scope_data &scope) const {
@@ -504,4 +540,14 @@ llvm::Value* assignment::generate_code(cg::scope_data &scope) const {
     }
 
     return scope.builder.CreateStore(r_val, l_val);
+}
+
+llvm::Function *cg::function_definition::get(scope_data &scope) {
+    if (function)
+        return function;
+
+    if (!node->generate_code(scope))
+        throw std::runtime_error("Function could not be generated.");
+
+    return function;
 }

@@ -14,11 +14,8 @@ option(ENABLE_LLVM "Build with LLVM support" ON)
 option(ENABLE_TESTING "Build with testing support" ON)
 
 set(CMAKE_CXX_STANDARD 23)
-set(FILES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
-        preprocess/preprocessor.cpp
-        preprocess/preprocessor.hpp
-        interface/llvm_build.cpp
-        interface/llvm_build.hpp)
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+set(FILES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
 
 function(build_dir dir)
     file(GLOB_RECURSE FILES_TEMP "${CMAKE_CURRENT_SOURCE_DIR}/${dir}/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/${dir}/*.h")

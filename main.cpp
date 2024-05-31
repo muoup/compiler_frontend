@@ -13,13 +13,13 @@ int main(int argc, char** argv) {
             .load_file()
             .pre_process()
             .gen_lex()
-            .gen_ast();
-
-    pipeline
+            .gen_ast()
+            .val_ast()
+//            .ast->print();
             .gen_llvm()
             .print_llvm();
 
-//    pipeline.ast->print(0);
+//    pipeline.ast->print();
 //    pipeline.gen_llvm();
 
     return 0;

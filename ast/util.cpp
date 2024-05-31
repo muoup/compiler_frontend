@@ -11,8 +11,9 @@ using namespace ast;
 std::vector<std::unordered_map<std::string_view, ast::nodes::variable_type>> ast::scope_stack;
 std::unordered_map<std::string_view, std::vector<ast::nodes::type_instance>> ast::struct_types;
 std::unordered_map<std::string_view, ast::nodes::function_prototype*> ast::function_prototypes;
+std::vector<ast::nodes::method_call*> ast::unfinished_method_calls;
 
-ast::nodes::function_prototype* ast::current_function = nullptr;
+ast::nodes::function_prototype const* ast::current_function = nullptr;
 
 std::optional<ast::nodes::variable_type> ast::get_var_type(std::string_view var_name) {
     for (auto it = scope_stack.rbegin(); it != scope_stack.rend(); ++it) {

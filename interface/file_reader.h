@@ -32,6 +32,7 @@ namespace in {
         file_pipeline& pre_process();
         file_pipeline& gen_lex();
         file_pipeline& gen_ast();
+        file_pipeline& val_ast();
 
 #ifdef LLVM_ENABLE
         file_pipeline& gen_llvm();

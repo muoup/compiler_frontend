@@ -13,8 +13,7 @@ std::optional<derived_lex> derive(const str_ptr start, const str_ptr end) {
         return [start, end, fn] { return fn(start, end); };
     };
 
-    return derive_assn_op(start, end)
-        .or_else(try_derive(derive_expr_op))
+    return derive_expr_op(start, end)
         .or_else(try_derive(derive_punctuator))
         .or_else(try_derive(derive_charlit))
         .or_else(try_derive(derive_strlit));
@@ -30,8 +29,8 @@ void output_buffer(const auto buffer_start, const auto buffer_end, std::vector<l
     if (shaved_buffer.empty())
         return;
 
-    if (isdigit(*buffer_start))
-        tokens.push_back(gen_numeric(buffer_start, buffer_end));
+    if (auto numeric = gen_numeric(shaved_start, buffer_end))
+        tokens.push_back(*numeric);
     else if (KEYWORD_SET.contains(shaved_buffer))
         tokens.emplace_back(lex_type::KEYWORD, shaved_buffer);
     else if (PRIMITIVES_SET.contains(shaved_buffer))

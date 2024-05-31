@@ -59,19 +59,40 @@ namespace ast::nodes {
         cg_container() = default;
 
         template<typename T>
-        cg_container&& add(const T &node) {
-            if constexpr (std::is_base_of_v<printable, T>) {
-                nodes.push_back(&node);
-            } else if constexpr (is_specialization<T, std::vector>) {
-                for (const auto &n : node) {
-                    add(n);
-                }
-            } else if constexpr (is_specialization<T, std::unique_ptr> || is_specialization<T, std::optional>) {
-                if (node)
-                    add(*node);
-            } else {
-                static_assert(false, "Invalid type passed to cg_container::add");
+        cg_container&& add(const std::vector<T> &list) {
+            for (const auto &n : list) {
+                add(n);
             }
+
+            return std::move(*this);
+        }
+
+        template<typename T>
+        cg_container&& add(const std::unique_ptr<T> &node) {
+            if (node)
+                add(*node);
+            return std::move(*this);
+        }
+
+        template<typename T>
+        cg_container&& add(const std::optional<T> &node) {
+            if (node)
+                add(*node);
+            return std::move(*this);
+        }
+
+        template<typename T>
+        cg_container&& add(const std::span<T> &list) {
+            for (const auto &n : list) {
+                add(n);
+            }
+            return std::move(*this);
+        }
+
+        template<typename T, std::enable_if<std::is_base_of_v<printable, T>>>
+        cg_container&& add(const T &node) {
+            nodes.push_back(&node);
+
             return std::move(*this);
         }
 
@@ -107,8 +128,6 @@ namespace ast::nodes {
             if constexpr (ast::nodes::is_specialization<T, std::unique_ptr> || ast::nodes::is_specialization<T, std::optional>) {
                 if (content) {
                     __print(*content);
-                } else {
-                    std::cout << "none ";
                 }
             } else if constexpr (std::is_base_of_v<printable, T>) {
                 content.print_details();

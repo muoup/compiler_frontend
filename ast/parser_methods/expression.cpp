@@ -34,7 +34,7 @@ std::unique_ptr<nodes::expression> pm::parse_expression(lex_cptr &ptr, const lex
         return std::make_unique<nodes::initialization>(parse_initialization(ptr, end));
 
     if (try_peek_type(ptr, end, lex::lex_type::IDENTIFIER) && try_peek_val(ptr, end, "(", 1))
-        return std::make_unique<nodes::method_call>(parse_method_call(ptr, end));
+        return parse_method_call(ptr, end);
 
     if (try_peek_type(ptr, end, lex::lex_type::IDENTIFIER) && try_peek_val(ptr, end, "[", 1))
         return std::make_unique<nodes::bin_op>(parse_array_access(ptr, end));
@@ -58,8 +58,10 @@ std::unique_ptr<nodes::expression> pm::parse_expr_tree(lex_cptr &ptr, const lex_
         expr_stack.pop();
 
         expr_stack.emplace(
-            std::make_unique<nodes::bin_op>(
-                    create_bin_op(std::move(l_expr), std::move(r_expr), top_op)
+        std::make_unique<nodes::bin_op>(
+               top_op,
+                std::move(l_expr),
+                std::move(r_expr)
             )
         );
     };
@@ -71,12 +73,13 @@ std::unique_ptr<nodes::expression> pm::parse_expr_tree(lex_cptr &ptr, const lex_
             auto assn_type = parse_assn(end, ptr);
             auto lhs = std::move(expr_stack.top());
             auto rhs = parse_expr_tree(ptr, end);
-            rhs = load_if_necessary(std::move(rhs));
 
             expr_stack.pop();
 
             return std::make_unique<nodes::assignment>(
-                    create_assignment(std::move(lhs), std::move(rhs), assn_type)
+                    std::move(lhs),
+                    std::move(rhs),
+                    assn_type
             );
         }
 
@@ -107,21 +110,10 @@ std::unique_ptr<nodes::expression> pm::parse_unop(lex_cptr &ptr, const lex_cptr 
 
     auto unop = *find_element(unop_type_map, operator_type);
 
-    switch (unop) {
-        case nodes::un_op_type::addr_of:
-            return std::make_unique<nodes::expression_shield>(
-                std::move(expr)
-            );
-        case nodes::un_op_type::deref:
-            return std::make_unique<nodes::load>(
-                std::move(expr)
-            );
-        default:
-            return std::make_unique<nodes::un_op>(
-                unop,
-                std::move(expr)
-            );
-    }
+    return std::make_unique<nodes::un_op>(
+            unop,
+            std::move(expr)
+    );
 }
 
 std::optional<nodes::bin_op_type> pm::parse_binop(lex_cptr &ptr, const lex_cptr) {
@@ -189,51 +181,23 @@ nodes::type_instance pm::parse_type_instance(lex_cptr &ptr, const lex_cptr end) 
     };
 }
 
-nodes::method_call pm::parse_method_call(lex_cptr &ptr, const lex_cptr end) {
-    auto call = nodes::method_call {
-            consume(ptr, end)->span,
-            parse_between(ptr, "(", parse_expression_list)
-    };
+std::unique_ptr<nodes::method_call> pm::parse_method_call(lex_cptr &ptr, const lex_cptr end) {
+    auto method_name = consume(ptr, end)->span;
+    auto expr_list = parse_between(ptr, "(", parse_expression_list);
 
-    auto fn = *find_element(function_prototypes, call.method_name);
-
-    for (auto i = 0; i < call.arguments.size(); i++) {
-        auto& arg = call.arguments[i];
-        arg = load_if_necessary(std::move(arg));
-
-        nodes::variable_type expected_type = arg->get_type();
-
-        if (i < fn->params.data.size()) {
-            expected_type = fn->params.data[i].instance.type;
-        } else if (fn->params.is_var_args) {
-            if (!expected_type.is_pointer()) {
-                expected_type = nodes::variable_type {
-                    nodes::intrinsic_type::i32,
-                };
-            }
-        }
-        else {
-            throw std::runtime_error("Too many arguments for function");
-        }
-
-        if (arg->get_type() != expected_type) {
-            arg = std::make_unique<nodes::cast>(
-                std::move(arg),
-                expected_type
-            );
-        }
-    }
+    auto call = std::make_unique<nodes::method_call>(
+            method_name,
+            std::move(expr_list)
+    );
 
     return call;
 }
 
 nodes::bin_op pm::parse_array_access(lex_cptr &ptr, const lex_cptr end) {
     const auto var_name = assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span;
-    auto array_index = load_if_necessary(
-            parse_between(ptr, "[", parse_expr_tree)
-    );
+    auto array_index = parse_between(ptr, "[", parse_expr_tree);
 
-    return nodes::bin_op{
+    return nodes::bin_op {
             nodes::bin_op_type::acc,
             std::make_unique<nodes::var_ref>(
                     var_name,
@@ -241,7 +205,6 @@ nodes::bin_op pm::parse_array_access(lex_cptr &ptr, const lex_cptr end) {
             ),
             std::move(array_index)
     };
-
 }
 
 nodes::var_ref pm::parse_variable(ast::lex_cptr &ptr, const ast::lex_cptr end) {
@@ -287,20 +250,11 @@ nodes::match pm::parse_match(ast::lex_cptr &ptr, const ast::lex_cptr end) {
 }
 
 nodes::initializer_list pm::parse_initializer_list(ast::lex_cptr &ptr, const ast::lex_cptr end) {
+    auto struct_hint = test_token_type(ptr, lex::lex_type::IDENTIFIER);
+
     return nodes::initializer_list {
-            parse_between(ptr, parse_expression_list)
-    };
-}
-
-nodes::struct_initializer pm::parse_struct_initializer(ast::lex_cptr &ptr, const ast::lex_cptr end) {
-    auto struct_type = assert_token_type(ptr, lex::lex_type::IDENTIFIER)->span;
-
-    if (!struct_types.contains(struct_type))
-        throw std::runtime_error(std::format("Struct {} not found", struct_type));
-
-    return nodes::struct_initializer {
-        struct_type,
-        parse_initializer_list(ptr, end).values
+            parse_between(ptr, parse_expression_list),
+            struct_hint ? (*struct_hint)->span : ""
     };
 }
 

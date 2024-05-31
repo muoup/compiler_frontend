@@ -7,6 +7,7 @@
 #ifdef LLVM_ENABLE
 #include "../llvm-gen/basic_codegen.h"
 #include "../preprocess/preprocessor.hpp"
+#include "../ast/validator/validator.hpp"
 
 #endif
 
@@ -49,6 +50,11 @@ file_pipeline& file_pipeline::gen_ast() {
     return *this;
 }
 
+file_pipeline& file_pipeline::val_ast() {
+    ast::val::validate(*ast);
+    return *this;
+}
+
 #ifdef LLVM_ENABLE
 
 file_pipeline& file_pipeline::gen_llvm() {
@@ -62,7 +68,7 @@ file_pipeline& file_pipeline::print_llvm() {
 }
 
 file_pipeline& file_pipeline::gen_exec() {
-
+    return *this;
 }
 
 #endif

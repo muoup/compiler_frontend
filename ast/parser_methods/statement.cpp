@@ -26,19 +26,7 @@ std::unique_ptr<nodes::statement> pm::parse_statement(lex_cptr &ptr, lex_cptr en
         if (++ptr == end)
             return std::make_unique<nodes::return_op>();
 
-        auto ret_val = load_if_necessary(parse_expr_tree(ptr, end));
-
-        if (ret_val->get_type() != current_function->return_type) {
-            // TODO: Attempt cast method, to prevent bad casting
-            ret_val = std::make_unique<nodes::cast>(
-                std::move(ret_val),
-                nodes::variable_type {
-                    current_function->return_type
-                }
-            );
-        }
-
-        return std::make_unique<nodes::return_op>(std::move(ret_val));
+        return std::make_unique<nodes::return_op>(parse_expr_tree(ptr, end));
     }
 
     return std::make_unique<nodes::expression_root>(
