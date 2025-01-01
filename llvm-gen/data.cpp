@@ -1,6 +1,7 @@
-
 #include "data.h"
+
 #include "../ast/data/abstract_data.h"
+
 #include <llvm/IR/Instruction.h>
 #include <format>
 

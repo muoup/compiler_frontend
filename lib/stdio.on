@@ -1,0 +1,13 @@
+#include libc
+
+fn print(char *str) {
+    printf(str);
+}
+
+fn println(char *str) {
+    puts(str);
+}
+
+fn stdinput(char *str) {
+    scanf("%s", str);
+}

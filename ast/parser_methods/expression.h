@@ -23,7 +23,7 @@ namespace ast::pm {
 
     std::optional<nodes::bin_op_type> parse_assn(const ast::lex_cptr, ast::lex_cptr &ptr);
 
-    nodes::method_call parse_method_call(lex_cptr &ptr, lex_cptr end);
+    std::unique_ptr<nodes::method_call> parse_method_call(lex_cptr &ptr, const lex_cptr end);
 
     nodes::var_ref parse_variable(lex_cptr &ptr, lex_cptr end);
 
@@ -34,8 +34,6 @@ namespace ast::pm {
     nodes::match parse_match(lex_cptr &ptr, lex_cptr end);
 
     nodes::initializer_list parse_initializer_list(lex_cptr &ptr, const ast::lex_cptr end);
-
-    nodes::struct_initializer parse_struct_initializer(ast::lex_cptr &ptr, const ast::lex_cptr end);
 
     nodes::initialization parse_initialization(lex_cptr &ptr, const lex_cptr end);
 

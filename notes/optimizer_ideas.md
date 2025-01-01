@@ -43,7 +43,7 @@ product and is stuck inside dead code which is activated only during debugging.
 
 ## Variable Inlining
 
-If a instance is trivially determinable, or is a method call which is only referenced
+If an instance is trivially determinable, or is a method call which is only referenced
 once, it is better to inline the instance or method call to avoid the additional overhead
 of the store and load operations. This is especially true for trivial constant variables,
 which are often used to avoid magical numbers in code.

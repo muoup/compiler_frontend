@@ -1,0 +1,11 @@
+_libc fn printf(char* format, ...) -> i32;
+_libc fn puts(char* str) -> i32;
+
+_libc fn gets(char* format, ...) -> i32;
+_libc fn getchar() -> i32;
+
+_libc fn scanf(char* format, ...) -> i32;
+_libc fn __isoc99_scanf(char* format, ...) -> i32;
+
+_libc fn malloc(u64 size) -> void*;
+_libc fn free(void* ptr);

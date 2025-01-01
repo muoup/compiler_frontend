@@ -9,7 +9,7 @@ namespace ast::pm {
     std::unique_ptr<nodes::program_level_stmt> parse_program_level_stmt(lex_cptr& ptr, lex_cptr end);
 
     std::unique_ptr<nodes::function_prototype> parse_function_prototype(lex_cptr &ptr, lex_cptr end);
-    std::unique_ptr<nodes::function> parse_function(lex_cptr& ptr, const lex_cptr end, std::unique_ptr<nodes::function_prototype> prototype);
+    nodes::function parse_function(lex_cptr& ptr, const lex_cptr end, const nodes::function_prototype *prototype);
     nodes::scope_block parse_body(lex_cptr& ptr, lex_cptr end);
     nodes::variable_type parse_var_type(lex_cptr& ptr, lex_cptr end);
     std::unique_ptr<nodes::struct_declaration> parse_struct_decl(lex_cptr& ptr, const lex_cptr end);

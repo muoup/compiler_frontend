@@ -22,7 +22,7 @@ namespace lex {
 
     char escape_char(char c);
 
-    lex_token gen_numeric(str_ptr start, str_ptr end);
+    std::optional<lex_token> gen_numeric(const str_ptr start, const str_ptr end);
 
     std::optional<derived_lex> derive_expr_op(str_ptr start, str_ptr end);
     std::optional<derived_lex> derive_assn_op(str_ptr start, str_ptr end);

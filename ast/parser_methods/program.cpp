@@ -1,5 +1,7 @@
 #include "program.h"
 
+#include <charconv>
+
 #include "expression.h"
 #include "../../lexer/lex.h"
 #include "statement.h"
@@ -8,17 +10,10 @@
 using namespace ast;
 
 std::unique_ptr<nodes::program_level_stmt> pm::parse_program_level_stmt(ast::lex_cptr &ptr, ast::lex_cptr end) {
-    if (peek(ptr, end)->span == "fn") {
-        auto prototype = parse_function_prototype(ptr, end);
-
-        if (test_token_val(ptr, ";"))
-            return prototype;
-
-        return parse_function(ptr, end, std::move(prototype));
+    if (test_token_val(ptr, "_libc") || peek(ptr, end)->span == "fn") {
+        return parse_function_prototype(ptr, end);
     } else if (peek(ptr, end)->span == "struct") {
         return parse_struct_decl(ptr, end);
-    } else if (test_token_val(ptr, "libc")) {
-        return parse_function_prototype(ptr, end);
     } else if (test_token_val(ptr, ";")) {
         return nullptr;
     }
@@ -55,21 +50,27 @@ std::unique_ptr<nodes::function_prototype> pm::parse_function_prototype(ast::lex
                     parse_var_type(ptr, end) :
                     nodes::variable_type::void_type();
 
-    auto fn_prototype = std::make_unique<nodes::function_prototype>(
+    auto prototype = std::make_unique<nodes::function_prototype>(
         ret_type,
         function_name,
-        std::move(params)
+        std::move(params),
+        nullptr
     );
 
-    function_prototypes.emplace(fn_prototype->fn_name, fn_prototype.get());
+    function_prototypes.emplace(function_name, prototype.get());
 
-    return fn_prototype;
+    if (!test_token_val(ptr, ";")) {
+        prototype->implementation = std::make_unique<nodes::function>(
+                parse_function(ptr, end, prototype.get())
+        );
+    }
+
+    return prototype;
 }
 
-std::unique_ptr<nodes::function> pm::parse_function(lex_cptr &ptr, const lex_cptr end, std::unique_ptr<nodes::function_prototype> prototype) {
+nodes::function pm::parse_function(lex_cptr &ptr, const lex_cptr end, const nodes::function_prototype *prototype) {
     scope_stack.emplace_back();
-
-    current_function = prototype.get();
+    current_function = prototype;
 
     for (const auto &param : prototype->params.data)
         scope_stack.back().emplace(param.instance.var_name, param.instance.type);
@@ -92,10 +93,10 @@ std::unique_ptr<nodes::function> pm::parse_function(lex_cptr &ptr, const lex_cpt
     current_function = nullptr;
     scope_stack.pop_back();
 
-    return std::make_unique<nodes::function>(
-        std::move(prototype),
-        std::move(body)
-    );
+    return nodes::function {
+        std::move(body),
+        prototype
+    };
 }
 
 nodes::scope_block pm::parse_body(lex_cptr &ptr, lex_cptr end) {

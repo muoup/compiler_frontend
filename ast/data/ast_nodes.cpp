@@ -23,21 +23,16 @@ array_initializer::array_initializer(variable_type type, ast::nodes::initializer
     }
 }
 
-struct_initializer::struct_initializer(std::string_view struct_type, std::vector<std::unique_ptr<nodes::expression>> init_list)
-    : struct_type(struct_type), values(std::move(init_list)) {
-    auto find = ast::struct_types.find(struct_type);
+struct_initializer::struct_initializer(const struct_declaration* type, std::vector<std::unique_ptr<nodes::expression>> init_list)
+    : struct_type(type->struct_name), values(std::move(init_list)) {
+    const auto &fields = type->fields;
 
-    if (find == ast::struct_types.end())
-        throw std::runtime_error("Struct type not found");
-
-    const auto &struct_decl = find->second;
-
-    if (struct_decl.size() != values.size())
+    if (fields.size() != values.size())
         throw std::runtime_error("Initializers do not match struct fields!");
 
     for (int i = 0; i < values.size(); ++i) {
         const auto val_type = values[i]->get_type();
-        const auto expected_type = struct_decl[i].type;
+        const auto expected_type = fields[i].type;
 
         if (val_type != expected_type) {
             if (!val_type.is_intrinsic() || !expected_type.is_intrinsic())

@@ -2,8 +2,11 @@
 #include <fstream>
 #include "file_reader.h"
 #include "../ast/interface.h"
+#include "../preprocess/preprocessor.hpp"
+#include "../ast/validator/validator.hpp"
 
 #ifdef ENABLE_LLVM
+#include "../llvm-gen/basic_codegen.h"
 #include "../llvm-gen/basic_codegen.h"
 #include "llvm/Support/TargetSelect.h"
 #include <llvm/TargetParser/Host.h>
@@ -38,6 +41,12 @@ file_pipeline & file_pipeline::load_file() {
     return *this;
 }
 
+file_pipeline &file_pipeline::pre_process() {
+    pp::preprocess(this->code);
+
+    return *this;
+}
+
 file_pipeline& file_pipeline::gen_lex() {
     this->tokens = lex::lex(this->code);
     return *this;
@@ -45,6 +54,11 @@ file_pipeline& file_pipeline::gen_lex() {
 
 file_pipeline& file_pipeline::gen_ast() {
     this->ast = std::make_unique<ast::nodes::root>(ast::parse(this->tokens));
+    return *this;
+}
+
+file_pipeline& file_pipeline::val_ast() {
+    ast::val::validate(*ast);
     return *this;
 }
 

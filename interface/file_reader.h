@@ -13,7 +13,9 @@
 #include "../ast/data/ast_nodes.h"
 #include "argument_parser.h"
 
+#ifdef ENABLE_LLVM
 #include <llvm/IR/Module.h>
+#endif
 
 namespace in {
     struct file_pipeline {
@@ -23,15 +25,19 @@ namespace in {
         std::vector<lex::lex_token> tokens;
         std::unique_ptr<ast::nodes::root> ast;
 
+#ifdef ENABLE_LLVM
         std::unique_ptr<llvm::LLVMContext> context;
         std::unique_ptr<llvm::Module> module;
+#endif
 
         file_pipeline(int argc, char** argv)
             : env(parse_args(argc, argv)) {}
 
-        file_pipeline &load_file();
+        file_pipeline& load_file();
+        file_pipeline& pre_process();
         file_pipeline& gen_lex();
         file_pipeline& gen_ast();
+        file_pipeline& val_ast();
 
 #ifdef ENABLE_LLVM
         file_pipeline& gen_llvm();
