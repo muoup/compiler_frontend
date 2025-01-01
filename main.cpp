@@ -7,15 +7,14 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    in::file_pipeline pipeline{argc, argv};
+    in::file_pipeline pipeline { argc, argv };
 
     pipeline
             .load_file()
             .gen_lex()
-            .gen_ast();
-
-    pipeline.ast->print(0);
-    pipeline.gen_llvm();
+            .gen_ast()
+            .gen_llvm()
+            .compile();
 
     return 0;
 }

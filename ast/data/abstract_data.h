@@ -1,7 +1,10 @@
 #pragma once
+
 #include <optional>
 #include <string_view>
 #include <variant>
+#include <unordered_map>
+
 #include "node_interfaces.h"
 
 namespace ast::nodes {

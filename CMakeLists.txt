@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 project(llvm_frontend)
 
 # Add compiler flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ferror-limit=0")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ferror-limit=0")
 
 # Since LLVM is a rather large dependency, it can be disabled for
 # non-codegen development on machines which do not have LLVM installed.
@@ -23,12 +23,15 @@ endfunction()
 
 message(STATUS "Building...")
 
+#add_compile_options(-fsanitize=address)
+#add_link_options(-fsanitize=address)
+
 build_dir("ast")
 build_dir("lexer")
 build_dir("interface")
 
 if (ENABLE_LLVM)
-    find_package(LLVM CONFIG REQUIRED)
+    find_package(LLVM CONFIG QUIET)
 
     if (NOT LLVM_FOUND)
         message(STATUS "LLVM NOT FOUND, DISABLING LLVM")
@@ -36,8 +39,6 @@ if (ENABLE_LLVM)
     else()
         message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
         message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-
-        add_compile_definitions(LLVM_ENABLE)
 
         message(STATUS "LLVM STATUS:
             Definitions: ${LLVM_DEFINITIONS}
@@ -49,7 +50,9 @@ if (ENABLE_LLVM)
         include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
         add_definitions(${LLVM_DEFINITIONS})
 
-        llvm_map_components_to_libnames(core)
+        add_compile_definitions(ENABLE_LLVM)
+
+        llvm_map_components_to_libnames(llvm_libs ${LLVM_TARGETS_TO_BUILD} support core irreader codegen mc mcparser option)
 
         build_dir("llvm-gen")
     endif()
@@ -58,8 +61,11 @@ endif ()
 add_executable(llvm_frontend ${FILES})
 
 if (ENABLE_LLVM)
-    target_link_libraries(llvm_frontend PRIVATE LLVMCore)
+    target_link_libraries(llvm_frontend PRIVATE ${llvm_libs})
     message(STATUS "LLVM ENABLED")
-endif ()
+else()
+    target_link_libraries(llvm_frontend PRIVATE compiler_backend)
+    message(STATUS "compiler_backend ENABLED")
+endif()
 
 message(STATUS "BUILD END")

@@ -2,6 +2,7 @@
 #include "data.h"
 #include "../ast/data/abstract_data.h"
 #include <llvm/IR/Instruction.h>
+#include <format>
 
 const std::unordered_map<ast::nodes::bin_op_type, llvm::Instruction::BinaryOps> cg::binop_map {
         { ast::nodes::bin_op_type::add, llvm::Instruction::BinaryOps::Add },

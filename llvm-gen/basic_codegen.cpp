@@ -4,6 +4,7 @@
 #include "operators.h"
 #include "data.h"
 
+#include <llvm/IR/Module.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/IRBuilder.h>
 
@@ -48,21 +49,25 @@ const struct_definition& scope_data::get_struct(std::string_view name) const {
     return struct_table->at(name);
 }
 
-void cg::generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream) {
-    llvm::LLVMContext context;
-    auto module = std::make_shared<llvm::Module>("main", context);
-    llvm::IRBuilder<> builder { context };
+ir_data cg::generate_ir(const ast::nodes::root &root) {
+    std::unique_ptr<llvm::LLVMContext> context = std::make_unique<llvm::LLVMContext>();
+    std::unique_ptr<llvm::Module> module = std::make_unique<llvm::Module>("main", *context);
+
+    llvm::IRBuilder<> builder { *context };
 
     scope_data prog_scope {
-        context,
-        module,
+        *context,
+        module.get(),
         builder,
         std::vector { std::make_shared<var_table>() },
         std::make_shared<std::unordered_map<std::string_view, struct_definition>>()
     };
 
     root.generate_code(prog_scope);
-    module->print(ostream, nullptr);
+    return {
+        .module = std::move(module),
+        .context = std::move(context)
+    };
 }
 
 llvm::Value* root::generate_code(cg::scope_data &scope) const {
