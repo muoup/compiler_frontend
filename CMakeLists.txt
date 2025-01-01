@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 project(llvm_frontend)
 
-# Add compiler flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ferror-limit=0")
-
 # Since LLVM is a rather large dependency, it can be disabled for
 # non-codegen development on machines which do not have LLVM installed.
 # For all master branch builds, LLVM should be enabled by default.
@@ -14,6 +11,7 @@ option(ENABLE_LLVM "Build with LLVM support" ON)
 option(ENABLE_TESTING "Build with testing support" ON)
 
 set(CMAKE_CXX_STANDARD 23)
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 set(FILES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
 
 function(build_dir dir)
@@ -23,9 +21,13 @@ endfunction()
 
 message(STATUS "Building...")
 
+# Copy the lib directory into the build directory
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/lib DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 build_dir("ast")
 build_dir("lexer")
 build_dir("interface")
+build_dir("preprocess")
 
 if (ENABLE_LLVM)
     find_package(LLVM CONFIG REQUIRED)

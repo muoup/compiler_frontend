@@ -7,10 +7,15 @@
 
 using namespace lex;
 
-lex_token lex::gen_numeric(const str_ptr start, const str_ptr end) {
+std::optional<lex_token> lex::gen_numeric(const str_ptr start, const str_ptr end) {
     lex_type type = lex_type::INT_LITERAL;
 
-    for (auto ptr = start; ptr != end; ++ptr) {
+    auto ptr = start;
+
+    if (!isdigit(*ptr))
+        return std::nullopt;
+
+    for (; ptr != end; ++ptr) {
         if (*ptr == '.' && type == lex_type::INT_LITERAL)
             type = lex_type::FLOAT_LITERAL;
         else if (!isdigit(*ptr))
@@ -52,12 +57,12 @@ std::optional<derived_lex> lex::derive_charlit(const str_ptr start, const str_pt
 }
 
 std::optional<derived_lex> lex::derive_expr_op(const str_ptr start, const str_ptr end) {
-    if (end - start > 3 && std::string_view {start, start + 3} == "...") {
-        return derived_lex { lex_type::EXPR_SYMBOL, start, start + 3 };
-    } else if (end - start > 2 && EXPR_SYMBOL.contains({ start, start + 2 })) {
-        return derived_lex { lex_type::EXPR_SYMBOL, start, start + 2 };
-    } else if (EXPR_SYMBOL.contains({ start, start + 1 })) {
-        return derived_lex { lex_type::EXPR_SYMBOL, start, start + 1};
+    for (auto i = 3; i >= 0; i--) {
+        if (end - start > i && EXPR_SYMBOL.contains({ start, start + i }))
+            return derived_lex { lex_type::EXPR_SYMBOL, start, start + i };
+
+        if (end - start > i && ASSN_SYMBOL.contains({ start, start + i }))
+            return derived_lex { lex_type::ASSN_SYMBOL, start, start + i };
     }
 
     return std::nullopt;

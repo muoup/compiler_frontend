@@ -4,8 +4,7 @@
 using namespace ast::nodes;
 
 variable_type method_call::get_type() const {
-    return (*ast::pm::find_element(ast::function_prototypes, method_name))
-        ->return_type;
+    return return_type;
 }
 
 variable_type initialization::get_type() const {

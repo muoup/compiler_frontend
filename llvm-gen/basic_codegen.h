@@ -17,6 +17,13 @@ namespace cg {
         bool is_const;
     };
 
+    struct function_definition {
+        const ast::nodes::function_prototype* node;
+        llvm::Function* function;
+
+        llvm::Function *get(scope_data &scope);
+    };
+
     using var_table = std::unordered_map<std::string_view, scope_variable>;
 
     struct scope_data {
@@ -25,6 +32,7 @@ namespace cg {
         llvm::IRBuilder<> &builder;
         std::vector<std::shared_ptr<var_table>> var_tables;
         std::shared_ptr<std::unordered_map<std::string_view, struct_definition>> struct_table;
+        std::shared_ptr<std::unordered_map<std::string_view, function_definition>> functions_table;
 
         llvm::BasicBlock *block = nullptr;
         llvm::Function* current_function = nullptr;
@@ -33,5 +41,5 @@ namespace cg {
         const struct_definition& get_struct(std::string_view name) const;
     };
 
-    void generate_code(const ast::nodes::root &root, llvm::raw_ostream &ostream);
+    std::shared_ptr<llvm::Module> generate_code(const ast::nodes::root &root);
 }

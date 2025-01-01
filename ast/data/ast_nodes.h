@@ -15,11 +15,12 @@ namespace ast::nodes {
 
         std::string_view method_name;
         std::vector<std::unique_ptr<expression>> arguments;
+        variable_type return_type;
 
         method_call(method_call&&) noexcept = default;
         method_call(std::string_view method_name,
                     std::vector<std::unique_ptr<expression>> arguments)
-                : method_name(method_name), arguments(std::move(arguments)) {}
+                : method_name(method_name), arguments(std::move(arguments)), return_type(variable_type::void_type()) {}
 
         CG_BASICGEN();
         ~method_call() = default;
@@ -137,7 +138,7 @@ namespace ast::nodes {
     struct assignment : expression {
         NODENAME("ASSIGNMENT");
         CHILDREN(lhs, rhs);
-        DETAILS(op ? ast::pm::find_key(ast::pm::binop_type_map, *op) : std::nullopt);
+        DETAILS(op ? ast::pm::find_key(ast::pm::binop_type_map, *op) : "" + std::string("="));
 
         std::unique_ptr<expression> lhs, rhs;
         std::optional<bin_op_type> op = std::nullopt;
@@ -245,10 +246,12 @@ namespace ast::nodes {
         NODENAME("INITIALIZER_LIST");
         CHILDREN(values);
 
+        std::string_view struct_hint;
         std::vector<std::unique_ptr<expression>> values;
 
         initializer_list(initializer_list&&) noexcept = default;
-        initializer_list(std::vector<std::unique_ptr<expression>> values) : values(std::move(values)) {}
+        initializer_list(std::vector<std::unique_ptr<expression>> values, std::string_view struct_hint = "")
+            : values(std::move(values)), struct_hint(struct_hint) {}
 
         CG_BASICGEN();
 
@@ -271,14 +274,17 @@ namespace ast::nodes {
         }
     };
 
+    struct struct_declaration;
+
     struct struct_initializer : expression {
         NODENAME("STRUCT_INITIALIZER");
         CHILDREN(values);
 
         std::string_view struct_type;
+        std::vector<type_instance> struct_types;
         std::vector<std::unique_ptr<expression>> values;
 
-        struct_initializer(std::string_view struct_type, std::vector<std::unique_ptr<nodes::expression>> init_list);
+        struct_initializer(const struct_declaration* initializer, std::vector<std::unique_ptr<nodes::expression>> init_list);
 
         CG_BASICGEN();
 
@@ -338,20 +344,18 @@ namespace ast::nodes {
         CG_BASICGEN();
     };
 
-    struct for_loop : statement {
+    struct for_loop : loop {
         NODENAME("FOR_LOOP");
         CHILDREN(init, condition, update, body);
 
         std::unique_ptr<expression> init;
-        std::unique_ptr<expression> condition;
         std::unique_ptr<expression> update;
-        scope_block body;
 
         for_loop(for_loop&&) noexcept = default;
         for_loop(std::unique_ptr<expression> init, std::unique_ptr<expression> condition,
                  std::unique_ptr<expression> update, scope_block body)
-                : init(std::move(init)), condition(std::move(condition)),
-                  update(std::move(update)), body(std::move(body)) {}
+                : init(std::move(init)), loop(true, std::move(condition), std::move(body)),
+                  update(std::move(update)) {}
 
         ~for_loop() = default;
         CG_BASICGEN();
@@ -372,24 +376,6 @@ namespace ast::nodes {
 
     // -- Program Level Nodes -------
 
-    struct function_prototype : program_level_stmt {
-        NODENAME("FUNCTION_PROTOTYPE");
-        CHILDREN(params.data);
-        DETAILS(params.is_var_args ? std::make_optional("VAR_ARGS") : std::nullopt, fn_name, return_type);
-
-        variable_type return_type;
-        std::string_view fn_name;
-        method_params params;
-
-        function_prototype(function_prototype&&) noexcept = default;
-        function_prototype(variable_type return_type, std::string_view method_name, method_params params)
-                : return_type(return_type), fn_name(method_name), params(std::move(params)) {}
-
-        ~function_prototype() = default;
-
-        CG_CUSTOMGEN(llvm::Function*);
-    };
-
     /**
      *  Function: Non-Abstract Data Type
      *  -------------------------------
@@ -399,19 +385,41 @@ namespace ast::nodes {
      *  within a function, the line between a function and a statement will blur. But for now,
      *  functions are a top-level construct.
      */
-    struct function : program_level_stmt {
-        NODENAME("FUNCTION");
-        CHILDREN(prototype, body);
+    struct function_prototype;
 
-        std::unique_ptr<ast::nodes::function_prototype> prototype;
+    struct function : program_level_stmt {
+        NODENAME("FUNCTION_IMPLEMENTATION");
+        CHILDREN(body);
+
         scope_block body;
+        const function_prototype* prototype;
 
         function(function&&) noexcept = default;
-        function(std::unique_ptr<ast::nodes::function_prototype> prototype, scope_block body)
-                : prototype(std::move(prototype)), body(std::move(body)) {}
+        function(scope_block body, const function_prototype* prototype)
+                : body(std::move(body)), prototype(prototype) {}
 
         ~function() = default;
         CG_BASICGEN();
+    };
+
+    struct function_prototype : program_level_stmt {
+        NODENAME("FUNCTION_PROTOTYPE");
+        CHILDREN(params.data, implementation);
+        DETAILS(return_type, fn_name, params.is_var_args ? std::make_optional("VAR_ARGS") : std::nullopt);
+
+        variable_type return_type;
+        std::string_view fn_name;
+        method_params params;
+
+        std::unique_ptr<function> implementation = nullptr;
+
+        function_prototype(function_prototype&&) noexcept = default;
+        function_prototype(variable_type return_type, std::string_view method_name, method_params params, std::unique_ptr<function> implementation = nullptr)
+                : return_type(return_type), fn_name(method_name), params(std::move(params)), implementation(std::move(implementation)) {}
+
+        ~function_prototype() = default;
+
+        CG_CUSTOMGEN(llvm::Function*);
     };
 
     /**

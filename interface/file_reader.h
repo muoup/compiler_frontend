@@ -21,16 +21,25 @@ namespace in {
         std::vector<lex::lex_token> tokens;
         std::unique_ptr<ast::nodes::root> ast;
 
+#ifdef LLVM_ENABLE
+        std::shared_ptr<llvm::Module> module;
+#endif
+
         file_pipeline(int argc, char** argv)
             : env(parse_args(argc, argv)) {}
 
-        file_pipeline &load_file();
+        file_pipeline& load_file();
+        file_pipeline& pre_process();
         file_pipeline& gen_lex();
         file_pipeline& gen_ast();
+        file_pipeline& val_ast();
 
 #ifdef LLVM_ENABLE
         file_pipeline& gen_llvm();
+        file_pipeline& print_llvm();
 #endif
+
+        file_pipeline& gen_exec();
     };
 
 }

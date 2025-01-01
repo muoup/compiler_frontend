@@ -1,11 +1,13 @@
 #include <sstream>
 #include <fstream>
 #include "file_reader.h"
-#include "../lexer/lex.h"
 #include "../ast/interface.h"
 
 #ifdef LLVM_ENABLE
 #include "../llvm-gen/basic_codegen.h"
+#include "../preprocess/preprocessor.hpp"
+#include "../ast/validator/validator.hpp"
+#include "llvm/IR/Module.h"
 #endif
 
 using namespace in;
@@ -31,6 +33,12 @@ file_pipeline & file_pipeline::load_file() {
     return *this;
 }
 
+file_pipeline &file_pipeline::pre_process() {
+    pp::preprocess(this->code);
+
+    return *this;
+}
+
 file_pipeline& file_pipeline::gen_lex() {
     this->tokens = lex::lex(this->code);
     return *this;
@@ -41,10 +49,24 @@ file_pipeline& file_pipeline::gen_ast() {
     return *this;
 }
 
+file_pipeline& file_pipeline::val_ast() {
+    ast::val::validate(*ast);
+    return *this;
+}
+
 #ifdef LLVM_ENABLE
 
 file_pipeline& file_pipeline::gen_llvm() {
-    cg::generate_code(*ast, llvm::outs());
+    this->module = cg::generate_code(*ast);
+    return *this;
+}
+
+file_pipeline& file_pipeline::print_llvm() {
+    this->module->print(llvm::outs(), nullptr);
+    return *this;
+}
+
+file_pipeline& file_pipeline::gen_exec() {
     return *this;
 }
 

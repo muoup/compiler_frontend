@@ -1,7 +1,7 @@
-#include <iostream>
-
 #include "interface.h"
+#include "data/ast_nodes.h"
 #include "parser_methods/program.h"
+#include "parser_methods/expression.h"
 
 using namespace ast;
 
@@ -14,6 +14,7 @@ nodes::root ast::parse(const std::vector<lex::lex_token> &tokens) {
     struct_types.clear();
 
     function_prototypes.clear();
+    unfinished_method_calls.clear();
     current_function = nullptr;
 
     auto ptr = tokens.cbegin();

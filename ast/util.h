@@ -1,6 +1,5 @@
 #pragma once
 
-#include <format>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -17,12 +16,6 @@ namespace lex {
 }
 
 namespace ast {
-    extern std::vector<std::unordered_map<std::string_view, ast::nodes::variable_type>> scope_stack;
-    extern std::unordered_map<std::string_view, std::vector<ast::nodes::type_instance>> struct_types;
-    extern std::unordered_map<std::string_view, ast::nodes::function_prototype*> function_prototypes;
-
-    extern ast::nodes::function_prototype* current_function;
-
     using lex_cptr = std::vector<lex::lex_token>::const_iterator;
 
     template <typename T>
@@ -30,8 +23,15 @@ namespace ast {
 
     template <typename T>
     using loop_fn = std::optional<T>(*)(lex_cptr&);
-
     using parse_pred = bool(*)(lex_cptr);
+
+    extern std::vector<std::unordered_map<std::string_view, ast::nodes::variable_type>> scope_stack;
+    extern std::unordered_map<std::string_view, std::vector<ast::nodes::type_instance>> struct_types;
+    extern std::unordered_map<std::string_view, ast::nodes::function_prototype*> function_prototypes;
+
+    extern std::vector<ast::nodes::method_call*> unfinished_method_calls;
+
+    extern ast::nodes::function_prototype const* current_function;
 
     std::optional<ast::nodes::variable_type> get_var_type(std::string_view var_name);
 
@@ -75,7 +75,7 @@ namespace ast {
         const auto terminate = find_by_tok_val(ptr, end, until)
             .or_else([assert_contains, end, &until] -> std::optional<lex_cptr> {
                 if (assert_contains)
-                    throw std::runtime_error(std::format("Expected but never found: {}", until));
+                    throw std::runtime_error("Expected but never found: {}" + std::string(until));
                 return end;
             }).value();
 
@@ -88,7 +88,7 @@ namespace ast {
     template <typename T, typename lex_cptr>
     T parse_between(lex_cptr& ptr, const parse_fn<T> fn) {
         if (!ptr->closer)
-            throw std::runtime_error(std::format("Tried to parse between a token with no closer. Token: {}", ptr->span));
+            throw std::runtime_error("Tried to parse between a token with no closer");
 
         const auto end = ptr->closer.value();
         auto node = fn(++ptr, end);
@@ -101,7 +101,7 @@ namespace ast {
     template <typename T, typename lex_cptr>
     T parse_between(lex_cptr& ptr, std::string_view val, const parse_fn<T> fn) {
         if (ptr->span != val)
-            throw std::runtime_error(std::format("Expected: {} but got: {}", val, ptr->span));
+            throw std::runtime_error("Expected: {}" + std::string(ptr->span));
 
         return parse_between(ptr, fn);
     }

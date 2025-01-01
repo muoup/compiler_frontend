@@ -7,11 +7,6 @@ namespace llvm {
     class LLVMContext;
 }
 
-namespace ast::nodes {
-    struct variable_tvar_valype;
-    struct type_instance;
-}
-
 #define AS_TYPE_GEN(x) reinterpret_cast<type_getter>(x)
 
 using type_getter = llvm::Type *(*)(llvm::LLVMContext &);
