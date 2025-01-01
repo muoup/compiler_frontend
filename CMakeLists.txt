@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 project(llvm_frontend)
 
-# Add compiler flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ferror-limit=0")
-
 # Since LLVM is a rather large dependency, it can be disabled for
 # non-codegen development on machines which do not have LLVM installed.
 # For all master branch builds, LLVM should be enabled by default.

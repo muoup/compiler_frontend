@@ -7,6 +7,7 @@
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
 
 using namespace ast::nodes;
 using namespace cg;

@@ -1,14 +1,13 @@
 #include <sstream>
 #include <fstream>
 #include "file_reader.h"
-#include "../lexer/lex.h"
 #include "../ast/interface.h"
 
 #ifdef LLVM_ENABLE
 #include "../llvm-gen/basic_codegen.h"
 #include "../preprocess/preprocessor.hpp"
 #include "../ast/validator/validator.hpp"
-
+#include "llvm/IR/Module.h"
 #endif
 
 using namespace in;

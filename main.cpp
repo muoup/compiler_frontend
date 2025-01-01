@@ -15,7 +15,6 @@ int main(int argc, char** argv) {
             .gen_lex()
             .gen_ast()
             .val_ast()
-//            .ast->print();
             .gen_llvm()
             .print_llvm();
 

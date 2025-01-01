@@ -4,6 +4,8 @@
 #include <stack>
 #include <stdexcept>
 
+#include <charconv>
+
 #include "operator.h"
 #include "statement.h"
 #include "../../lexer/lex.h"
