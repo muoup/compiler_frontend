@@ -9,13 +9,17 @@ int main(int argc, char** argv) {
 
     in::file_pipeline pipeline { argc, argv };
 
+//    pipeline.compile(true);
+
     pipeline
-            .load_file()
-            .pre_process()
-            .gen_lex()
-            .gen_ast()
-            .gen_llvm()
-            .compile();
+        .load_file()
+        .pre_process()
+        .gen_lex()
+        .gen_ast()
+        .gen_llvm()
+        .gen_object_file()
+        .compile()
+        .cleanup();
 
     return 0;
 }

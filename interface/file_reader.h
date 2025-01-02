@@ -41,8 +41,12 @@ namespace in {
 
 #ifdef ENABLE_LLVM
         file_pipeline& gen_llvm();
-        file_pipeline& compile();
+        file_pipeline& print_llvm();
+        file_pipeline& gen_object_file();
 #endif
+
+        file_pipeline& compile();
+        file_pipeline& cleanup();
     };
 
 }
