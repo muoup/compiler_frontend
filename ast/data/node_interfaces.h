@@ -1,11 +1,13 @@
 #pragma once
+
+#include <iostream>
 #include <memory>
 
 #include <span>
 #include <vector>
 #include <optional>
 
-#ifdef LLVM_ENABLE
+#ifdef ENABLE_LLVM
 
 #include <llvm/IR/Value.h>
 #include <llvm/IR/BasicBlock.h>

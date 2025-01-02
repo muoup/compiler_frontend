@@ -11,7 +11,6 @@ option(ENABLE_LLVM "Build with LLVM support" ON)
 option(ENABLE_TESTING "Build with testing support" ON)
 
 set(CMAKE_CXX_STANDARD 23)
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 set(FILES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
 
 function(build_dir dir)
@@ -30,7 +29,7 @@ build_dir("interface")
 build_dir("preprocess")
 
 if (ENABLE_LLVM)
-    find_package(LLVM CONFIG REQUIRED)
+    find_package(LLVM CONFIG QUIET)
 
     if (NOT LLVM_FOUND)
         message(STATUS "LLVM NOT FOUND, DISABLING LLVM")
@@ -38,8 +37,6 @@ if (ENABLE_LLVM)
     else()
         message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
         message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-
-        add_compile_definitions(LLVM_ENABLE)
 
         message(STATUS "LLVM STATUS:
             Definitions: ${LLVM_DEFINITIONS}
@@ -51,7 +48,9 @@ if (ENABLE_LLVM)
         include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
         add_definitions(${LLVM_DEFINITIONS})
 
-        llvm_map_components_to_libnames(core)
+        add_compile_definitions(ENABLE_LLVM)
+
+        llvm_map_components_to_libnames(llvm_libs ${LLVM_TARGETS_TO_BUILD} support core irreader codegen mc mcparser option)
 
         build_dir("llvm-gen")
     endif()
@@ -60,8 +59,11 @@ endif ()
 add_executable(llvm_frontend ${FILES})
 
 if (ENABLE_LLVM)
-    target_link_libraries(llvm_frontend PRIVATE LLVMCore)
+    target_link_libraries(llvm_frontend PRIVATE ${llvm_libs})
     message(STATUS "LLVM ENABLED")
-endif ()
+else()
+    target_link_libraries(llvm_frontend PRIVATE compiler_backend)
+    message(STATUS "compiler_backend ENABLED")
+endif()
 
 message(STATUS "BUILD END")

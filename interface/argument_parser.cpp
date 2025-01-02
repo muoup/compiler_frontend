@@ -50,6 +50,14 @@ arg_env in::parse_args(int argc, char **argv) {
             env.emit = OBJ;
         else if (arg == "-emit-exec")
             env.emit = EXEC;
+        else if (arg == "-o") {
+            if (!get_arg(args, i, arg)) {
+                std::cerr << "No output file provided\n";
+                std::exit(1);
+            }
+
+            env.object_file = arg;
+        }
         else {
             std::cerr << "Unknown argument: " << arg << '\n';
             std::exit(1);
@@ -61,6 +69,11 @@ arg_env in::parse_args(int argc, char **argv) {
         std::exit(1);
     }
 
-    env.output_file = arg;
+    env.input_file = arg;
+
+    // Since the current suffix is .on, an object file is the same name minus the last n
+    if (env.object_file == "")
+        env.object_file = std::string { env.input_file.data(), env.input_file.size() - 1 };
+
     return env;
 }

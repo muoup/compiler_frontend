@@ -28,7 +28,7 @@ namespace cg {
 
     struct scope_data {
         llvm::LLVMContext &context;
-        std::shared_ptr<llvm::Module> module;
+        llvm::Module* module;
         llvm::IRBuilder<> &builder;
         std::vector<std::shared_ptr<var_table>> var_tables;
         std::shared_ptr<std::unordered_map<std::string_view, struct_definition>> struct_table;
@@ -41,5 +41,10 @@ namespace cg {
         const struct_definition& get_struct(std::string_view name) const;
     };
 
-    std::shared_ptr<llvm::Module> generate_code(const ast::nodes::root &root);
+    struct ir_data {
+        std::unique_ptr<llvm::Module> module;
+        std::unique_ptr<llvm::LLVMContext> context;
+    };
+
+    ir_data generate_ir(const ast::nodes::root &root);
 }

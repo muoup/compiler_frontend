@@ -19,7 +19,8 @@ namespace in {
     struct arg_env {
         optimizer_level opt_level = O0;
         emit_type emit = EXEC;
-        std::string output_file;
+        std::string input_file;
+        std::string object_file;
     };
 
     extern arg_env parse_args(int argc, char** argv);

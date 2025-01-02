@@ -7,19 +7,19 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    in::file_pipeline pipeline{argc, argv};
+    in::file_pipeline pipeline { argc, argv };
+
+//    pipeline.compile(true);
 
     pipeline
-            .load_file()
-            .pre_process()
-            .gen_lex()
-            .gen_ast()
-            .val_ast()
-            .gen_llvm()
-            .print_llvm();
-
-//    pipeline.ast->print();
-//    pipeline.gen_llvm();
+        .load_file()
+        .pre_process()
+        .gen_lex()
+        .gen_ast()
+        .gen_llvm()
+        .gen_object_file()
+        .compile()
+        .cleanup();
 
     return 0;
 }
