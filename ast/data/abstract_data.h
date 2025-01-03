@@ -99,7 +99,7 @@ namespace ast::nodes {
 
     struct type_instance : printable {
         NODENAME("TYPE_INSTANCE");
-        DETAILS(var_name);
+        DETAILS(var_name, type);
 
         variable_type type;
         std::string_view var_name;

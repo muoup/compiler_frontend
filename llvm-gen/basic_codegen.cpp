@@ -123,7 +123,7 @@ llvm::Value* literal::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* cast::generate_code(cg::scope_data &scope) const {
-    auto *expr_val = expr->generate_code(scope);
+    auto *expr_val = cg::load_if_ref(expr, scope);
     auto *llvm_cast_type = get_llvm_type(cast_type, scope);
 
     auto expr_type = expr->get_type();
@@ -161,15 +161,10 @@ llvm::Value* cast::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* load::generate_code(cg::scope_data &scope) const {
-    auto val = expr->generate_code(scope);
-    auto type = expr->get_type();
-
-    if (type.is_var_ref && type.is_pointer())
-        return val;
-    else if (type.is_var_ref || type.is_pointer())
-        return scope.builder.CreateLoad(get_llvm_type(type, scope), val);
-
-    throw std::runtime_error("Cannot load non-pointer and non-argument type.");
+    return scope.builder.CreateLoad(
+        get_llvm_type(get_type().dereference(), scope),
+        expr->generate_code(scope)
+    );
 }
 
 llvm::Value* expression_shield::generate_code(cg::scope_data &scope) const {
@@ -207,9 +202,6 @@ llvm::Value* initialization::generate_code(cg::scope_data &scope) const {
     auto init_type = get_type();
     llvm::Type* type;
 
-    if (init_type.array_length == -1)
-        throw std::runtime_error("Cannot initialize array with unknown length.");
-
     if (init_type.array_length)
         type = llvm::ArrayType::get(get_llvm_type(init_type.dereference(), scope), init_type.array_length);
     else
@@ -230,8 +222,9 @@ llvm::Value* method_call::generate_code(cg::scope_data &scope) const {
 
     std::vector<llvm::Value*> args;
 
-    for (auto &arg : arguments)
-        args.emplace_back(arg->generate_code(scope));
+    for (auto &arg : arguments) {
+        args.emplace_back(cg::load_if_ref(arg, scope));
+    }
 
     if (arguments.size() != func->arg_size() && !func->isVarArg())
         throw std::runtime_error("Argument count mismatch.");
@@ -439,7 +432,6 @@ llvm::Function* function_prototype::generate_code(cg::scope_data &scope) const {
 
 llvm::Value* function::generate_code(cg::scope_data &scope) const {
     if (!prototype->params.data.empty()) {
-        bool block_needed = false;
         auto param_scope = gen_inner_scope(scope);
 
         for (size_t i = 0; i < prototype->params.data.size(); ++i) {
@@ -450,28 +442,15 @@ llvm::Value* function::generate_code(cg::scope_data &scope) const {
 
             auto type = param.get_type();
 
-            if (type.is_pointer()) {
-                add_to_table(param_scope.var_tables, param.instance.var_name, scope_variable {
-                    .var_allocation = arg,
-                    .struct_type = get_struct_ref(type, scope),
-                    .is_const = false
-                });
-            } else {
-                block_needed = true;
-                param_scope.builder.CreateStore(
-                    arg,
-                    param.generate_code(param_scope)
-                );
-            }
+            param_scope.builder.CreateStore(
+                arg,
+                param.generate_code(param_scope)
+            );
         }
 
         auto body_scope = body.generate_code(param_scope);
         scope.builder.SetInsertPoint(param_scope.block);
-
-        if (!block_needed)
-            param_scope.block->eraseFromParent();
-        else
-            scope.builder.CreateBr(body_scope);
+        scope.builder.CreateBr(body_scope);
     } else {
         body.generate_code(scope);
     }
@@ -532,14 +511,14 @@ llvm::Value* bin_op::generate_code(cg::scope_data &scope) const {
 }
 
 llvm::Value* assignment::generate_code(cg::scope_data &scope) const {
-    auto *l_val = lhs->generate_code(scope);
-    auto *r_val = rhs->generate_code(scope);
+    llvm::Value *l_val = lhs->generate_code(scope);
+    llvm::Value *r_val = load_if_ref(rhs, scope);
 
     if (op) {
         r_val = scope.builder.CreateBinOp(
-                get_llvm_binop(*op, r_val->getType()->isFloatingPointTy()),
-                scope.builder.CreateLoad(r_val->getType(), l_val),
-                r_val
+            get_llvm_binop(*op, r_val->getType()->isFloatingPointTy()),
+            load_if_ref(lhs, scope),
+            r_val
         );
     }
 

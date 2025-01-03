@@ -59,6 +59,7 @@ file_pipeline& file_pipeline::gen_ast() {
 
 file_pipeline& file_pipeline::print_ast() {
     ast->print();
+    std::cout.flush();
     return *this;
 }
 

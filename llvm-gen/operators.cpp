@@ -14,6 +14,24 @@ struct pseudo_bin_op {
     nodes::bin_op_type type;
 };
 
+llvm::Value *cg::load_if_ref(const std::unique_ptr<ast::nodes::expression> &expr, cg::scope_data &data) {
+    if (auto *var_ref = dynamic_cast<nodes::var_ref*>(expr.get())) {
+        return data.builder.CreateLoad(
+            get_llvm_type(var_ref->get_type(), data),
+            var_ref->generate_code(data)
+        );
+    } else if (auto *bin_op = dynamic_cast<nodes::bin_op*>(expr.get())) {
+        if (bin_op->type == nodes::bin_op_type::acc) {
+            return data.builder.CreateLoad(
+                get_llvm_type(bin_op->get_type(), data),
+                expr->generate_code(data)
+            );
+        }
+    }
+
+    return expr->generate_code(data);
+}
+
 llvm::Value * cg::attempt_cast(llvm::Value *val, llvm::Type *to_type, const scope_data &data) {
     const auto *from_type = val->getType();
 
@@ -46,8 +64,8 @@ llvm::Value* cg::varargs_cast(llvm::Value *val, const scope_data &scope) {
 }
 
 llvm::Value *generate_comparison(const pseudo_bin_op &ref, cg::scope_data &scope) {
-    auto lhs = ref.left->generate_code(scope);
-    auto rhs = ref.right->generate_code(scope);
+    auto lhs = cg::load_if_ref(ref.left, scope);
+    auto rhs = cg::load_if_ref(ref.right, scope);
 
     auto l_type = ref.left->get_type();
 
@@ -81,8 +99,8 @@ llvm::Instruction::BinaryOps cg::get_llvm_binop(const nodes::bin_op_type type, c
 }
 
 llvm::Value* generate_basic_op(const pseudo_bin_op &ref, cg::scope_data &scope) {
-    auto *lhs = ref.left->generate_code(scope);
-    auto *rhs = ref.right->generate_code(scope);
+    auto *lhs = cg::load_if_ref(ref.left, scope);
+    auto *rhs = cg::load_if_ref(ref.right, scope);
 
     return scope.builder.CreateBinOp(
             get_llvm_binop(ref.type, lhs->getType()->isFloatingPointTy()),
@@ -90,16 +108,16 @@ llvm::Value* generate_basic_op(const pseudo_bin_op &ref, cg::scope_data &scope) 
 }
 
 llvm::Value* cg::generate_accessor(const std::unique_ptr<ast::nodes::expression> &left, const std::unique_ptr<ast::nodes::expression> &right, cg::scope_data &scope) {
-    auto l_code = left->generate_code(scope);
-    auto r_code = right->generate_code(scope);
+    auto *l_ptr = cg::load_if_ref(left, scope);
+    auto *r_code = cg::load_if_ref(right, scope);
 
     auto l_type = left->get_type();
     auto r_type = right->get_type();
 
     if (l_type.is_pointer()) {
         return scope.builder.CreateGEP(
-            get_llvm_type(left->get_type().type, scope),
-            l_code,
+            get_llvm_type(left->get_type(), scope),
+            l_ptr,
             r_code
         );
     }
@@ -124,20 +142,24 @@ llvm::Value* cg::generate_accessor(const std::unique_ptr<ast::nodes::expression>
 
     auto field_index_int = std::distance(struct_decl.field_decls.begin(), field_index);
 
-    return scope.builder.CreateStructGEP(struct_decl.struct_type, l_code, field_index_int);
+    return scope.builder.CreateStructGEP(
+            struct_decl.struct_type,
+            l_ptr,
+            field_index_int
+            );
 }
 
 llvm::Value* cg::generate_bin_op(const std::unique_ptr<ast::nodes::expression> &left, const std::unique_ptr<ast::nodes::expression> &right, const ast::nodes::bin_op_type type, cg::scope_data &scope) {
     const pseudo_bin_op ref { left, right, type };
+
+    if (type == nodes::bin_op_type::acc)
+        return generate_accessor(left, right, scope);
 
     if (cg::binop_map.contains(type))
         return generate_basic_op(ref, scope);
 
     if (cg::i_cmp_map.contains(type) || cg::f_cmp_map.contains(type))
         return generate_comparison(ref, scope);
-
-    if (type == nodes::bin_op_type::acc)
-        return generate_accessor(left, right, scope);
 
     throw std::runtime_error("Invalid binary operator.");
 }

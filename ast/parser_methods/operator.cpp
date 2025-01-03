@@ -28,10 +28,8 @@ namespace ast::pm {
             type,
             std::move(left),
             std::make_unique<nodes::cast>(
-                std::move(right),
-                nodes::variable_type {
-                    l_type
-                }
+            std::move(right),
+            l_type
             )
         };
     }

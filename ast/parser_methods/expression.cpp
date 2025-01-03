@@ -79,9 +79,9 @@ std::unique_ptr<nodes::expression> pm::parse_expr_tree(lex_cptr &ptr, const lex_
             expr_stack.pop();
 
             return std::make_unique<nodes::assignment>(
-                    std::move(lhs),
-                    std::move(rhs),
-                    assn_type
+                std::move(lhs),
+                std::move(rhs),
+                assn_type
             );
         }
 
