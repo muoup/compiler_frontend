@@ -16,17 +16,22 @@ struct pseudo_bin_op {
 
 llvm::Value *cg::load_if_ref(const std::unique_ptr<ast::nodes::expression> &expr, cg::scope_data &data) {
     if (auto *var_ref = dynamic_cast<nodes::var_ref*>(expr.get())) {
-        return data.builder.CreateLoad(
-            get_llvm_type(var_ref->get_type(), data),
-            var_ref->generate_code(data)
-        );
+        // If the variable is the name of a struct field, then it should not be loaded
+        if (var_ref->type) {
+            return data.builder.CreateLoad(
+                    get_llvm_type(var_ref->get_type(), data),
+                    var_ref->generate_code(data)
+            );
+        }
     } else if (auto *bin_op = dynamic_cast<nodes::bin_op*>(expr.get())) {
         if (bin_op->type == nodes::bin_op_type::acc) {
             return data.builder.CreateLoad(
-                get_llvm_type(bin_op->get_type(), data),
+                get_llvm_type(bin_op->get_type().dereference(), data),
                 expr->generate_code(data)
             );
         }
+    } else if (auto *cast = dynamic_cast<nodes::cast*>(expr.get())) {
+        cg::load_if_ref(cast->expr, data);
     }
 
     return expr->generate_code(data);
@@ -108,17 +113,13 @@ llvm::Value* generate_basic_op(const pseudo_bin_op &ref, cg::scope_data &scope) 
 }
 
 llvm::Value* cg::generate_accessor(const std::unique_ptr<ast::nodes::expression> &left, const std::unique_ptr<ast::nodes::expression> &right, cg::scope_data &scope) {
-    auto *l_ptr = cg::load_if_ref(left, scope);
-    auto *r_code = cg::load_if_ref(right, scope);
-
     auto l_type = left->get_type();
-    auto r_type = right->get_type();
 
     if (l_type.is_pointer()) {
         return scope.builder.CreateGEP(
             get_llvm_type(left->get_type(), scope),
-            l_ptr,
-            r_code
+            cg::load_if_ref(left, scope),
+            cg::load_if_ref(right, scope)
         );
     }
 
@@ -144,7 +145,7 @@ llvm::Value* cg::generate_accessor(const std::unique_ptr<ast::nodes::expression>
 
     return scope.builder.CreateStructGEP(
             struct_decl.struct_type,
-            l_ptr,
+            left->generate_code(scope),
             field_index_int
             );
 }

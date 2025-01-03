@@ -170,7 +170,7 @@ static void val::validate_bin_op(ast::nodes::bin_op *op) {
     }
 
     if (l_type.is_intrinsic() && r_type.is_intrinsic()
-        || l_type.is_pointer() && r_type.is_pointer()) {
+     || l_type.is_pointer() && r_type.is_pointer()) {
         if (l_type == r_type)
             return;
 
@@ -225,6 +225,10 @@ static void val::validate_assn(ast::nodes::assignment *assn) {
         assn->lhs = std::move(load->expr);
 
     cast_to(assn->rhs, assn->lhs->get_type());
+
+    if (auto *init = dynamic_cast<ast::nodes::initialization*>(assn->lhs.get())) {
+        init->instance.type.array_length = assn->rhs->get_type().array_length;
+    }
 }
 
 static void val::validate_access(ast::nodes::bin_op *access) {
@@ -281,9 +285,10 @@ static void val::cast_to(std::unique_ptr<ast::nodes::expression> &expr, ast::nod
                     std::move(initializer->values)
             );
         } else if (type.is_pointer()) {
+            type.array_length = initializer->values.size();
             expr = std::make_unique<ast::nodes::array_initializer>(
-                    type,
-                    std::move(initializer->values)
+                type,
+                std::move(initializer->values)
             );
         } else {
             throw std::runtime_error("Cannot cast initializer list to a primitive type");

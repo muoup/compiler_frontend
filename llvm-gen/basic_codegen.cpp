@@ -128,7 +128,14 @@ llvm::Value* cast::generate_code(cg::scope_data &scope) const {
 
     auto expr_type = expr->get_type();
 
-    if (expr_type == cast_type)
+    if (auto *binop = dynamic_cast<bin_op*>(expr.get())) {
+        if (binop->type == bin_op_type::acc) {
+            expr_type.pointer_depth--;
+        }
+    }
+
+    if (expr_type.pointer_depth == cast_type.pointer_depth
+    &&  expr_type.type == cast_type.type)
         return expr_val;
 
     if (expr_type.is_pointer() && cast_type.is_pointer())
@@ -181,21 +188,17 @@ llvm::Value* struct_initializer::generate_code(cg::scope_data &scope) const {
 
     llvm::Value* aggregate = llvm::UndefValue::get(struct_def.struct_type);
 
-    for (auto i = 0; i < struct_size; i++)
-        aggregate = scope.builder.CreateInsertValue(aggregate, values[i]->generate_code(scope), i);
+    for (auto i = 0; i < struct_size; ++i) {
+        auto *val = cg::load_if_ref(values[i], scope);
+
+        aggregate = scope.builder.CreateInsertValue(aggregate, val, i);
+    }
 
     return aggregate;
 }
 
 llvm::Value* array_initializer::generate_code(cg::scope_data &scope) const {
-    auto type = get_llvm_type(array_type.dereference(), scope);
-
-    llvm::Value* aggregate = llvm::UndefValue::get(llvm::ArrayType::get(type, values.size()));
-
-    for (auto i = 0; i < values.size(); ++i)
-        aggregate = scope.builder.CreateInsertValue(aggregate, values[i]->generate_code(scope), i);
-
-    return aggregate;
+    throw std::runtime_error("Array initializers are not yet implemented.");
 }
 
 llvm::Value* initialization::generate_code(cg::scope_data &scope) const {
