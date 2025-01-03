@@ -8,13 +8,4 @@ fn main() -> i32 {
     example_struct s = {1, 2};
 
     printf("struct values: %d, %d", s.a, s.b);
-
-    i32[5] arr;
-    arr[0] = 2;
-    arr[1] = 3;
-    arr[2] = 4;
-    arr[3] = 5;
-    arr[4] = 6;
-
-    printf("%d ", arr[1]);
 }
