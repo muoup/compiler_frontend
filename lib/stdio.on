@@ -8,6 +8,6 @@ fn println(char *str) {
     puts(str);
 }
 
-fn stdinput(char *str) {
+fn input(char *str) {
     scanf("%s", str);
 }

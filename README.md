@@ -51,6 +51,14 @@ The steps therefore to build the software are as follows:
 
 Alternatively if an IDE is being used, this can be done through the IDE's interface.
 
+## Usage
+
+The software currently is set up to take in the filepath of a source file as an argument, and will output the generated
+executable. Along with this, the following flags can be used:
+
+* -o <output_file> : Specify the name of the output file
+* -O0/-O1/-O2/-O3 : Specify the optimization level (default is O0)
+
 ## Example Code
 
 Updated as of January 2nd, 2025.
@@ -62,28 +70,39 @@ the following code can be used for a simple "Hello, World!" program:
 ```
 #include stdio
 
-fn main() -> i32 {
+fn main() {
     println("Hello, World!");
 }
 ```
 
-Most standard forms of control flow are supported, including if-else statements, while/do while loops, and for loops,
-as seen in the following example, which outputs the numbers 0 through 9:
-
-Note that the compiler currently lacks escape character parsing, so the newline character
-will not be recognized in the string literal.
+A slightly more advanced example utilized all three currently implemented stdio functions: println, print, and input. This
+program will prompt the user for their name, and then print a greeting to the console:
 
 ```
 #include stdio
 
-fn test() {
-    for (i32 i = 0; i < 10; i++) {
-        printf("%d ", i);
-    }
-}
+fn main() {
+    char[32] name;
 
-fn main() -> i32 {
-    test();
+    println("Enter your name: ");
+    input(name);
+
+    print("Hello, ");
+    println(name);
+}
+```
+
+Most standard forms of control flow are supported, for instance the following code below will print a numbered
+list of all the arguments passed to the program:
+
+```
+#include libc
+
+fn main(i32 argc, char** argv) {
+    printf("Arguments Received: %d\n", argc);
+    for (i32 i = 0; i < argc; i += 1) {
+        printf("Argument %d: %s\n", i, argv[i]);
+    }
 }
 ```
 
@@ -101,7 +120,7 @@ fn main() -> i32 {
     example_struct s = {1, 2};
     i32[] arr = {1, s.b, 3, 4, 5};
     
-    for (i32 i = 0; i < 5; i++) {
+    for (i32 i = 0; i < 5; i += 1) {
         printf("%d ", arr[i]);
     }
 }

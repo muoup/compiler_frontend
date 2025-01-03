@@ -80,7 +80,7 @@ namespace ast::nodes {
         ~variable_type() override = default;
 
         static variable_type void_type() {
-            return {intrinsic_type::void_ };
+            return { intrinsic_type::void_ };
         }
 
         variable_type pointer_to() const;
