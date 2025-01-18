@@ -5,7 +5,7 @@ struct example_struct {
 }
 
 fn main() -> i32 {
-    example_struct s = {1, 2};
+    example_struct s = { 1, 2 };
 
     printf("struct values: %d, %d", s.a, s.b);
 }

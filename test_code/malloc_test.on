@@ -1,0 +1,12 @@
+#include stdio
+
+fn main() {
+    char* s = malloc(10);
+
+    println("Enter a string: ");
+    input(s);
+
+    printf("You entered: %s", s);
+
+    free(s);
+}

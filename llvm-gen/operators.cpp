@@ -31,7 +31,7 @@ llvm::Value *cg::load_if_ref(const std::unique_ptr<ast::nodes::expression> &expr
             );
         }
     } else if (auto *cast = dynamic_cast<nodes::cast*>(expr.get())) {
-        cg::load_if_ref(cast->expr, data);
+        return cg::attempt_cast(cast->expr->generate_code(data), get_llvm_type(cast->get_type(), data), data);
     }
 
     return expr->generate_code(data);
