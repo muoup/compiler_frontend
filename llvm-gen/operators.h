@@ -24,6 +24,8 @@ namespace cg {
 
     balance_result balance_sides(llvm::Value *lhs, llvm::Value *rhs, const scope_data& data);
 
+    llvm::Value* load_if_ref(const std::unique_ptr<ast::nodes::expression> &expr, scope_data& data);
+
     llvm::Value* attempt_cast(llvm::Value *val, llvm::Type *to_type, const scope_data &data);
 
     llvm::Value* generate_bin_op(const std::unique_ptr<ast::nodes::expression> &left, const std::unique_ptr<ast::nodes::expression> &right, const ast::nodes::bin_op_type type, cg::scope_data &scope);

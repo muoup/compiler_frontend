@@ -61,7 +61,7 @@ namespace ast::nodes {
         cg_container() = default;
 
         template<typename T>
-        cg_container&& add(const std::vector<T> &list) {
+        cg_container&& add_i(const std::vector<T> &list) {
             for (const auto &n : list) {
                 add(n);
             }
@@ -70,29 +70,29 @@ namespace ast::nodes {
         }
 
         template<typename T>
-        cg_container&& add(const std::unique_ptr<T> &node) {
+        cg_container&& add_i(const std::unique_ptr<T> &node) {
             if (node)
                 add(*node);
             return std::move(*this);
         }
 
         template<typename T>
-        cg_container&& add(const std::optional<T> &node) {
+        cg_container&& add_i(const std::optional<T> &node) {
             if (node)
                 add(*node);
             return std::move(*this);
         }
 
         template<typename T>
-        cg_container&& add(const std::span<T> &list) {
+        cg_container&& add_i(const std::span<T> &list) {
             for (const auto &n : list) {
                 add(n);
             }
             return std::move(*this);
         }
 
-        template<typename T, std::enable_if<std::is_base_of_v<printable, T>>>
-        cg_container&& add(const T &node) {
+        template<typename T>
+        cg_container&& add_i(const T &node) {
             nodes.push_back(&node);
 
             return std::move(*this);
@@ -100,7 +100,7 @@ namespace ast::nodes {
 
         template<typename... Nodes>
         cg_container&& add(const Nodes &...node) {
-            (add(node), ...);
+            (add_i(node), ...);
             return std::move(*this);
         }
     };

@@ -26,7 +26,7 @@ variable_type get_accessor_type(const bin_op &self) {
     auto type = self.left->get_type();
 
     if (type.is_pointer())
-        return type.dereference();
+        return type;
 
     if (type.is_intrinsic())
         throw std::runtime_error("Cannot access member of intrinsic type!");

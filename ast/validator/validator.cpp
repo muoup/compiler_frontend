@@ -123,15 +123,6 @@ static void val::validate_expression(std::unique_ptr<ast::nodes::expression> &tr
         validate_expression(expr->expr);
     } else if (auto *init = dynamic_cast<ast::nodes::initialization*>(tree.get())) {
         scopes.back().emplace(init->instance.var_name, init->instance.type);
-    } else if (auto *var = dynamic_cast<ast::nodes::var_ref*>(tree.get())) {
-        auto find = find_variable(var->var_name);
-
-        if (!find)
-            throw std::runtime_error("Variable " + std::string(var->var_name) + " not found");
-
-        var->type = *find;
-
-        create_load(tree);
     }
 }
 
@@ -156,6 +147,8 @@ static void val::validate_method_call(ast::nodes::method_call *call) {
             throw std::runtime_error("Too many arguments for function " + std::string(call->method_name));
 
         for (size_t i = func->params.data.size(); i < call->arguments.size(); ++i) {
+            validate_expression(call->arguments[i]);
+
             if (!call->arguments[i]->get_type().is_pointer())
                 cast_to(call->arguments[i], nodes::variable_type{nodes::intrinsic_type::i32});
         }
@@ -177,7 +170,7 @@ static void val::validate_bin_op(ast::nodes::bin_op *op) {
     }
 
     if (l_type.is_intrinsic() && r_type.is_intrinsic()
-        || l_type.is_pointer() && r_type.is_pointer()) {
+     || l_type.is_pointer() && r_type.is_pointer()) {
         if (l_type == r_type)
             return;
 
@@ -232,6 +225,10 @@ static void val::validate_assn(ast::nodes::assignment *assn) {
         assn->lhs = std::move(load->expr);
 
     cast_to(assn->rhs, assn->lhs->get_type());
+
+    if (auto *init = dynamic_cast<ast::nodes::initialization*>(assn->lhs.get())) {
+        init->instance.type.array_length = assn->rhs->get_type().array_length;
+    }
 }
 
 static void val::validate_access(ast::nodes::bin_op *access) {
@@ -240,8 +237,10 @@ static void val::validate_access(ast::nodes::bin_op *access) {
     auto l_type = access->left->get_type();
     auto r_access = dynamic_cast<ast::nodes::var_ref*>(access->right.get());
 
-    if (l_type.is_intrinsic())
-        throw std::runtime_error("Cannot access field of intrinsic type");
+    if (l_type.is_pointer()) {
+        cast_to(access->right, nodes::variable_type{ nodes::intrinsic_type::i64 });
+        return;
+    }
 
     if (!r_access)
         throw std::runtime_error("Right side of access is not a field (var_ref)");
@@ -280,18 +279,19 @@ static void val::cast_to(std::unique_ptr<ast::nodes::expression> &expr, ast::nod
                     struct_names.at(initializer->struct_hint),
                     std::move(initializer->values)
             );
-        } else if (!type.is_intrinsic() && type.is_pointer()) {
+        } else if (!type.is_intrinsic()) {
             expr = std::make_unique<ast::nodes::struct_initializer>(
                     struct_names.at(std::get<std::string_view>(type.type)),
                     std::move(initializer->values)
             );
         } else if (type.is_pointer()) {
+            type.array_length = initializer->values.size();
             expr = std::make_unique<ast::nodes::array_initializer>(
-                    type,
-                    std::move(initializer->values)
+                type,
+                std::move(initializer->values)
             );
         } else {
-            throw std::runtime_error("Cannot cast initializer list to non-pointer type");
+            throw std::runtime_error("Cannot cast initializer list to a primitive type");
         }
 
         return;

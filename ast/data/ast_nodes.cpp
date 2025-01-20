@@ -11,14 +11,16 @@ using namespace ast::nodes;
 array_initializer::array_initializer(variable_type type, ast::nodes::initializer_list &&init_list)
     : array_type(type), values(std::move(init_list.values)) {
 
+    const auto expected_type = array_type.dereference();
+
     for (auto &val : values) {
         const auto val_type = val->get_type();
 
-        if (val_type != array_type) {
+        if (val_type != expected_type) {
             if (!val_type.is_intrinsic() || !array_type.is_intrinsic())
                 throw std::runtime_error("Non-intrinsic types cannot be casted (yet)!");
 
-            val = std::make_unique<cast>(std::move(val), array_type);
+            val = std::make_unique<cast>(std::move(val), expected_type);
         }
     }
 }

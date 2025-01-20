@@ -1,7 +1,5 @@
 #pragma once
 #include <unordered_map>
-#include <llvm/IR/InstrTypes.h>
-#include <llvm/IR/Instruction.h>
 #include "abstract_data.h"
 
 namespace ast::pm {

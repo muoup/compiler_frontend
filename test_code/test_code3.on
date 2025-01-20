@@ -1,0 +1,11 @@
+#include stdio
+
+struct example_struct {
+    i32 a, i32 b
+}
+
+fn main() -> i32 {
+    example_struct s = { 1, 2 };
+
+    printf("struct values: %d, %d", s.a, s.b);
+}

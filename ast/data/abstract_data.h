@@ -80,7 +80,7 @@ namespace ast::nodes {
         ~variable_type() override = default;
 
         static variable_type void_type() {
-            return {intrinsic_type::void_ };
+            return { intrinsic_type::void_ };
         }
 
         variable_type pointer_to() const;
@@ -99,7 +99,7 @@ namespace ast::nodes {
 
     struct type_instance : printable {
         NODENAME("TYPE_INSTANCE");
-        DETAILS(var_name);
+        DETAILS(var_name, type);
 
         variable_type type;
         std::string_view var_name;

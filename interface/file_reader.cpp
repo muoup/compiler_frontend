@@ -57,6 +57,12 @@ file_pipeline& file_pipeline::gen_ast() {
     return *this;
 }
 
+file_pipeline& file_pipeline::print_ast() {
+    ast->print();
+    std::cout.flush();
+    return *this;
+}
+
 file_pipeline& file_pipeline::val_ast() {
     ast::val::validate(*ast);
     return *this;
@@ -116,6 +122,22 @@ file_pipeline& file_pipeline::gen_object_file() {
 
     llvm::legacy::PassManager pass;
     auto file_type = llvm::CodeGenFileType::ObjectFile;
+
+    // set optimization level
+    switch (env.opt_level) {
+        case O0:
+            target_machine->setOptLevel(llvm::CodeGenOptLevel::None);
+            break;
+        case O1:
+            target_machine->setOptLevel(llvm::CodeGenOptLevel::Less);
+            break;
+        case O2:
+            target_machine->setOptLevel(llvm::CodeGenOptLevel::Default);
+            break;
+        case O3:
+            target_machine->setOptLevel(llvm::CodeGenOptLevel::Aggressive);
+            break;
+    }
 
     if (target_machine->addPassesToEmitFile(pass, dest, nullptr, file_type)) {
         llvm::errs() << "TargetMachine can't emit a file of this type";

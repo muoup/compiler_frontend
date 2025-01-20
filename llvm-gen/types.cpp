@@ -41,21 +41,15 @@ const struct_definition* cg::get_struct_ref(const ast::nodes::variable_type &val
 
 llvm::Type* cg::get_llvm_type(const ast::nodes::variable_type &val_type, scope_data &scope) {
     const auto& type = val_type.type;
-    llvm::Type* derived_type = nullptr;
 
+    // Pointer type
+    if (val_type.pointer_depth > 0)
+        return llvm::PointerType::getUnqual(scope.context);
+
+    // Intrinsic type
     if (std::holds_alternative<ast::nodes::intrinsic_type>(type))
-        derived_type = type_generators.at(std::get<ast::nodes::intrinsic_type>(type))(scope.context);
-    else
-        derived_type = scope.get_struct(std::get<std::string_view>(type)).struct_type;
+        return type_generators.at(std::get<ast::nodes::intrinsic_type>(type))(scope.context);
 
-    if (val_type.is_void() && val_type.pointer_depth > 0)
-        return llvm::PointerType::get(
-                type_generators.at(ast::nodes::intrinsic_type::i32)(scope.context),
-                0
-                );
-
-    for (size_t i = 0; i < val_type.pointer_depth; i++)
-        derived_type = llvm::PointerType::get(derived_type, 0);
-
-    return derived_type;
+    // Non-intrinsic / Struct type
+    return scope.get_struct(std::get<std::string_view>(type)).struct_type;
 }
