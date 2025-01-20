@@ -1,0 +1,20 @@
+fn get_title_id(char* title) -> u64 {
+    return 10;
+}
+
+struct Book {
+    u64 titleID;
+    u64 authorID;
+    u64 storeID;
+
+    .titleID(u64) => titleID;
+    .title(char*) => titleID(10);
+    .authorID(u64), storeID(u64), storeIndex(u64) => titleID(25);
+
+    .authorID(u64) => authorID;
+    .author(char*) => authorID(10);
+    .titleID(u64) => authorID(66);
+
+    .storeID(u64) => storeID;
+    .store(char*) => storeID(10);
+};
