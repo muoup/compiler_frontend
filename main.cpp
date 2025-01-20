@@ -17,12 +17,12 @@ int main(int argc, char** argv) {
         .gen_lex()
         .gen_ast()
         .val_ast()
-        .print_ast()
-        .gen_llvm()
-        .print_llvm()
-        .gen_object_file()
-        .compile()
-        .cleanup();
+        .print_ast();
+//        .gen_llvm()
+//        .print_llvm()
+//        .gen_object_file()
+//        .compile()
+//        .cleanup();
 
     return 0;
 }
